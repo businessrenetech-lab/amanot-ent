@@ -5,17 +5,24 @@
 // - Admin (/admin) logs in, gets a JWT, and reads/writes the full state.
 // - All writes and /api/state require the Bearer token.
 //
-// No-op unless VITE_API_BASE is defined, so with no backend the app stays
-// 100% offline/localStorage.
-//   VITE_API_BASE="http://localhost:8000"  -> dev (API on another port)
-//   VITE_API_BASE=""                        -> prod (same origin as the site)
-//   (unset)                                 -> disabled, localStorage only
+//   VITE_API_BASE="http://localhost:8000"  -> API on another origin (dev)
+//   VITE_API_BASE=""                        -> same origin as the site
+//   (unset, production build)               -> same origin as the site
+//   (unset, dev build)                      -> disabled, localStorage only
 // ============================================================================
 
 const RAW = import.meta.env.VITE_API_BASE as string | undefined;
 
-/** True when a backend is configured. */
-export const API_ENABLED = RAW !== undefined;
+/**
+ * True when a backend is configured.
+ *
+ * A production build always talks to its own origin, even when VITE_API_BASE
+ * was missing at build time. That variable is baked in by Vite during the
+ * build, so a host that rebuilds without it would otherwise ship a site that
+ * looks fine but silently never reaches the API ("Backend not configured").
+ * Dev builds keep the opt-in behaviour so `npm run dev` works with no backend.
+ */
+export const API_ENABLED = RAW !== undefined || import.meta.env.PROD;
 
 const BASE = (RAW ?? '').replace(/\/$/, '');
 const url = (path: string) => `${BASE}${path}`;
