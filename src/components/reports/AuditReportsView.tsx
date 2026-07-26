@@ -27,6 +27,11 @@ import * as XLSX from 'xlsx';
 import { generateBrandedReportPDF, ReportSection } from '../../utils/reportPdfGenerator';
 import { formatDate } from '../../utils/formatDate';
 import { UnifiedStatementView } from './UnifiedStatementView';
+import {
+  buildStatementEntries,
+  buildStatementTotals,
+  STATEMENT_TYPE_LABEL
+} from '../../utils/unifiedStatement';
 
 export const AuditReportsView: React.FC = () => {
   const { sales, products, expenses, purchaseOrders, customerReturns, activeBusiness, currentUser, auditConfig, settings } = useApp();
@@ -34,7 +39,7 @@ export const AuditReportsView: React.FC = () => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const isSuperAdmin = currentUser.role === 'super_admin';
 
-  const [auditTab, setAuditTab] = useState<'profit_loss' | 'sales' | 'product_sales' | 'purchases' | 'expenses' | 'statement'>('profit_loss');
+  const [auditTab, setAuditTab] = useState<'profit_loss' | 'sales' | 'product_sales' | 'purchases' | 'expenses' | 'statement' | 'full_report'>('profit_loss');
 
   // Business Scope Filter (Combined or Separate Branches)
   const [businessScope, setBusinessScope] = useState<'all' | BusinessType>(activeBusiness);
@@ -414,6 +419,64 @@ export const AuditReportsView: React.FC = () => {
     b === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise';
 
   // Every audit filter's content assembled as titled sections (used by both PDF & Print).
+  /** Audited pools shared by the on-screen statement and its PDF/print output. */
+  const statementInput = {
+    sales: auditedSalesList,
+    purchaseOrders: auditedPurchaseOrdersList,
+    expenses: auditedExpensesList,
+    customerReturns: auditedReturnsList,
+    profitMarginMultiplier: auditConfig.profitMarginMultiplier ?? 0.8
+  };
+
+  /** Sections for the consolidated statement tab (ledger + summary). */
+  const buildStatementSections = (): ReportSection[] => {
+    const entries = buildStatementEntries(statementInput);
+    const totals = buildStatementTotals(statementInput);
+
+    return [
+      {
+        heading: 'Consolidated Statement — Transaction Ledger',
+        tableHeaders: ['Date', 'Type', 'Reference', 'Particulars', 'Debit (BDT)', 'Credit (BDT)', 'Balance (BDT)'],
+        tableData: [
+          ...entries.map((e) => [
+            formatDate(e.date),
+            STATEMENT_TYPE_LABEL[e.type],
+            e.reference,
+            e.particulars,
+            e.debit > 0 ? e.debit.toLocaleString() : '-',
+            e.credit > 0 ? e.credit.toLocaleString() : '-',
+            e.balance.toLocaleString()
+          ]),
+          [
+            'TOTALS',
+            '',
+            '',
+            `${entries.length} entries`,
+            totals.totalDebit.toLocaleString(),
+            totals.totalCredit.toLocaleString(),
+            totals.netMovement.toLocaleString()
+          ]
+        ]
+      },
+      {
+        heading: 'Period Summary',
+        tableHeaders: ['Particulars', 'Amount (BDT)'],
+        tableData: [
+          ['Total Gross Sales', Math.round(totals.grossSales).toLocaleString()],
+          ['Customer Returns (-)', `-${Math.round(totals.customerReturns).toLocaleString()}`],
+          ['Referral (SP) Payouts (-)', `-${Math.round(totals.referralExpense).toLocaleString()}`],
+          ['Total Net Sales', Math.round(totals.netSales).toLocaleString()],
+          ['Cost of Goods Sold (-)', `-${Math.round(totals.totalCOGS).toLocaleString()}`],
+          ['Total Gross Profit', Math.round(totals.grossProfit).toLocaleString()],
+          ['Total Purchase', Math.round(totals.totalPurchase).toLocaleString()],
+          ['Total Expense (-)', `-${Math.round(totals.totalExpense).toLocaleString()}`],
+          ['Total Damage (-)', `-${Math.round(totals.totalDamage).toLocaleString()}`],
+          [totals.isProfit ? 'TOTAL NET PROFIT' : 'TOTAL NET LOSS', Math.round(totals.netProfit).toLocaleString()]
+        ]
+      }
+    ];
+  };
+
   const buildAuditSections = (): ReportSection[] => [
     {
       heading: '1. Tax Profit & Loss Statement',
@@ -469,9 +532,47 @@ export const AuditReportsView: React.FC = () => {
     }
   ];
 
+  /**
+   * Each filter exports its own content. `full_report` is the only one that
+   * bundles every section into the combined compliance document.
+   */
+  const getExportSpec = (): { title: string; fileTag: string; sections: ReportSection[] } => {
+    const all = buildAuditSections();
+    const pick = (prefixes: string[]) =>
+      all.filter((s) => prefixes.some((p) => s.heading.startsWith(p)));
+
+    switch (auditTab) {
+      case 'profit_loss':
+        return { title: 'Tax Profit & Loss Statement', fileTag: 'Profit_Loss', sections: pick(['1.']) };
+      case 'sales':
+        return { title: 'Tax Sales Invoices Audit', fileTag: 'Sales_Invoices', sections: pick(['2.']) };
+      case 'product_sales':
+        return { title: 'Product-Wise Tax Sales', fileTag: 'Product_Wise_Sales', sections: pick(['3.']) };
+      case 'purchases':
+        return { title: 'Tax Purchase & Procurement', fileTag: 'Purchases', sections: pick(['4.', '4a.']) };
+      case 'expenses':
+        return { title: 'Tax Business Expenses', fileTag: 'Expenses', sections: pick(['5.']) };
+      case 'statement':
+        return {
+          title: 'Consolidated Statement (All-in-One)',
+          fileTag: 'Consolidated_Statement',
+          sections: buildStatementSections()
+        };
+      case 'full_report':
+      default:
+        return {
+          title: 'Tax Filing & Compliance Audit Report',
+          fileTag: 'Tax_Compliance',
+          sections: [...all, ...buildStatementSections()]
+        };
+    }
+  };
+
   const handleExportTaxPDF = () => {
+    const { title, fileTag, sections } = getExportSpec();
+
     generateBrandedReportPDF({
-      title: 'Tax Filing & Compliance Audit Report',
+      title,
       subtitle: `Scope: ${scopeName}`,
       businessScope,
       dateFilterText: getDateFilterLabel(),
@@ -483,8 +584,8 @@ export const AuditReportsView: React.FC = () => {
         { label: 'Audited Gross Profit', value: `BDT ${auditGrossProfit.toLocaleString()}` },
         { label: 'Taxable Net Income', value: `BDT ${Math.round(auditNetProfit).toLocaleString()}` }
       ],
-      sections: buildAuditSections(),
-      fileName: `Amanot_Tax_Compliance_${businessScope}_${todayStr}.pdf`
+      sections,
+      fileName: `Amanot_${fileTag}_${businessScope}_${todayStr}.pdf`
     });
   };
 
@@ -492,7 +593,8 @@ export const AuditReportsView: React.FC = () => {
   const handlePrintAll = () => {
     const esc = (v: unknown) =>
       String(v ?? '').replace(/[&<>]/g, (c) => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as Record<string, string>)[c]));
-    const sections = buildAuditSections();
+    // Print what is on screen — only the full report prints every section
+    const { title: printTitle, sections } = getExportSpec();
     const sectionsHtml = sections
       .map(
         (sec) => `
@@ -508,7 +610,7 @@ export const AuditReportsView: React.FC = () => {
       )
       .join('');
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Tax Filing & Compliance Audit Report</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(printTitle)}</title>
       <style>
         *{box-sizing:border-box}
         body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:24px}
@@ -526,7 +628,7 @@ export const AuditReportsView: React.FC = () => {
       </style></head>
       <body>
         <div class="head">
-          <h1>AMANOT GROUP — Tax Filing & Compliance Audit Report</h1>
+          <h1>AMANOT GROUP — ${esc(printTitle)}</h1>
           <p>Scope: ${esc(scopeName)} &nbsp;|&nbsp; Period: ${esc(getDateFilterLabel())}</p>
           <p>Generated by: ${esc(currentUser.name)} &nbsp;|&nbsp; ${esc(new Date().toLocaleString('en-GB'))}</p>
         </div>
@@ -682,7 +784,8 @@ export const AuditReportsView: React.FC = () => {
                 { id: 'product_sales', label: '3. Product-Wise Tax Sales' },
                 { id: 'purchases', label: '4. Tax Purchase & Procurement' },
                 { id: 'expenses', label: '5. Tax Business Expenses' },
-                { id: 'statement', label: '6. Consolidated Statement (All-in-One)' }
+                { id: 'statement', label: '6. Consolidated Statement (All-in-One)' },
+                { id: 'full_report', label: '7. TAX FILING & COMPLIANCE AUDIT REPORT (Combined)' }
               ].map((tab) => (
                 <option key={tab.id} value={tab.id} className="bg-white text-slate-800 font-semibold">
                   {tab.label}
@@ -1178,6 +1281,61 @@ export const AuditReportsView: React.FC = () => {
             adjustedNote={`Reported figures only — gross profit scaled by ${auditConfig.profitMarginMultiplier ?? 0.8}x per audit config.`}
             accent="indigo"
           />
+        </div>
+      )}
+
+      {/* 7. COMBINED COMPLIANCE DOCUMENT — every section in one export */}
+      {auditTab === 'full_report' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+          <div className="border-b pb-3">
+            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+              Tax Filing &amp; Compliance Audit Report (Combined)
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Every audit section bundled into one document — {getDateFilterLabel()} · Scope: {scopeName}.
+              Use <span className="font-bold">Export PDF</span> or <span className="font-bold">Print</span> above.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Audited Revenue', value: auditRevenue },
+              { label: 'Audited COGS', value: auditCOGS },
+              { label: 'Audited Gross Profit', value: auditGrossProfit },
+              { label: 'Taxable Net Income', value: auditNetProfit }
+            ].map((m) => (
+              <div key={m.label} className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-800">{m.label}</p>
+                <p className="text-lg font-black font-mono text-indigo-900 mt-0.5">
+                  ৳{Math.round(m.value).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-black text-slate-700 uppercase tracking-wide">Included in this document</p>
+            <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+              {[
+                { label: '1. Tax Profit & Loss Statement', count: '7 lines' },
+                { label: '2. Tax Sales Invoices Audit', count: `${auditedSalesList.length} invoices` },
+                { label: '3. Product-Wise Tax Sales', count: `${auditedProductSalesList.length} products` },
+                { label: '4. Tax Purchase & Procurement', count: `${auditedPurchaseOrdersList.length} POs` },
+                { label: '4a. Purchased Product Details', count: `${auditedPurchaseLineItems.length} lines` },
+                { label: '5. Tax Business Expenses', count: `${auditedExpensesList.length} vouchers` },
+                { label: '6. Consolidated Statement (ledger + summary)', count: 'all transactions' }
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between px-3 py-2">
+                  <span className="text-xs font-bold text-slate-800">{row.label}</span>
+                  <span className="text-[11px] font-mono font-bold text-slate-500">{row.count}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium">
+              Every other filter exports only its own section. This one bundles them all.
+            </p>
+          </div>
         </div>
       )}
 
