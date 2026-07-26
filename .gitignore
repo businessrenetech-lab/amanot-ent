@@ -1,6 +1,5 @@
 node_modules/
 build/
-dist/
 coverage/
 .DS_Store
 *.log
@@ -8,3 +7,6 @@ coverage/
 !.env.example
 .gstack/
 .antigravity/
+
+# Build output IS committed so the host can run without a build step.
+# Regenerate with: VITE_API_BASE= npm run build && npm run build:server
