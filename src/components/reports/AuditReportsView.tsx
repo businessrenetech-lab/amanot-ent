@@ -64,6 +64,9 @@ export const AuditReportsView: React.FC = () => {
   // 1. Audited Sales Pool (Filtered according to Super Admin Tax Config, Business Scope & Date Range)
   const auditedSalesList = useMemo(() => {
     let pool = sales.filter((s) => {
+      // Drafts are unposted: no stock moved, no money taken. They are never sales.
+      if (s.isDraft) return false;
+
       if (businessScope !== 'all' && s.business !== businessScope) return false;
 
       const dateStr = s.createdAt.substring(0, 10);

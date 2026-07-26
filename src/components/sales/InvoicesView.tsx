@@ -20,17 +20,20 @@ import {
   CreditCard,
   RotateCcw,
   Undo2,
-  Edit3
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { CustomerReturnModal } from './CustomerReturnModal';
 
 export const InvoicesView: React.FC = () => {
-  const { sales, customerReturns, setActiveReceiptInvoice, sendSMS, payInvoiceDue, accounts, activeBusiness, currentUser, settings, loadSaleIntoPOS } = useApp();
+  const { sales, customerReturns, setActiveReceiptInvoice, sendSMS, payInvoiceDue, deleteSale, accounts, activeBusiness, currentUser, settings, loadSaleIntoPOS } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid' | 'partial'>('all');
   const [businessFilter, setBusinessFilter] = useState<'all' | BusinessType>('all');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'customer_returns'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'drafts' | 'customer_returns'>('invoices');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [draftPendingDelete, setDraftPendingDelete] = useState<SaleInvoice | null>(null);
 
   // Customer Return Modal State
   const [isCustomerReturnOpen, setIsCustomerReturnOpen] = useState(false);
@@ -68,26 +71,47 @@ export const InvoicesView: React.FC = () => {
     setPayDueModalInvoice(null);
   };
 
-  const filteredSales = useMemo(() => {
+  /** Business/role scope shared by both the posted-invoice and draft lists. */
+  const inScope = useMemo(() => {
     return sales.filter((s) => {
-      // Business scope
       if (activeBusiness !== 'all' && s.business !== activeBusiness) return false;
       if (currentUser.assignedBusiness !== 'all' && s.business !== currentUser.assignedBusiness) return false;
+      return true;
+    });
+  }, [sales, activeBusiness, currentUser]);
+
+  const matchesSearch = (s: SaleInvoice, q: string) =>
+    s.id.toLowerCase().includes(q) ||
+    s.customerName.toLowerCase().includes(q) ||
+    s.customerPhone.toLowerCase().includes(q);
+
+  // Posted invoices only. Drafts are unposted — no stock moved, no money taken —
+  // so they never belong in the sales list or any sales total.
+  const filteredSales = useMemo(() => {
+    return inScope.filter((s) => {
+      if (s.isDraft) return false;
 
       if (businessFilter !== 'all' && s.business !== businessFilter) return false;
       if (statusFilter !== 'all' && s.paymentStatus !== statusFilter) return false;
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          s.id.toLowerCase().includes(q) ||
-          s.customerName.toLowerCase().includes(q) ||
-          s.customerPhone.toLowerCase().includes(q)
-        );
-      }
+      if (searchQuery.trim()) return matchesSearch(s, searchQuery.toLowerCase());
       return true;
     });
-  }, [sales, activeBusiness, currentUser, businessFilter, statusFilter, searchQuery]);
+  }, [inScope, businessFilter, statusFilter, searchQuery]);
+
+  const draftSales = useMemo(() => {
+    return inScope.filter((s) => {
+      if (!s.isDraft) return false;
+      if (businessFilter !== 'all' && s.business !== businessFilter) return false;
+      if (draftSearch.trim()) return matchesSearch(s, draftSearch.toLowerCase());
+      return true;
+    });
+  }, [inScope, businessFilter, draftSearch]);
+
+  const draftValueTotal = useMemo(
+    () => draftSales.reduce((acc, s) => acc + s.grandTotal, 0),
+    [draftSales]
+  );
 
   const filteredInvoiceIds = useMemo(() => new Set(filteredSales.map((s) => s.id)), [filteredSales]);
   const filteredReturns = useMemo(() => {
@@ -174,6 +198,18 @@ export const InvoicesView: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('drafts')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition ${
+            activeTab === 'drafts'
+              ? 'bg-slate-900 text-white shadow-sm font-extrabold'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Edit3 className="w-4 h-4 text-amber-500" />
+          Draft Sales ({draftSales.length})
+        </button>
+
+        <button
           onClick={() => setActiveTab('customer_returns')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition ${
             activeTab === 'customer_returns'
@@ -185,6 +221,162 @@ export const InvoicesView: React.FC = () => {
           Customer Returns Log ({customerReturns.length})
         </button>
       </div>
+
+      {/* ================= DRAFT SALES ================= */}
+      {activeTab === 'drafts' && (
+        <div className="space-y-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-black text-amber-900">
+                  {draftSales.length} unposted draft{draftSales.length === 1 ? '' : 's'} · ৳{draftValueTotal.toLocaleString()}
+                </p>
+                <p className="text-[11px] font-bold text-amber-700 mt-0.5">
+                  Drafts hold no stock and no payment. They are excluded from every sales figure and report
+                  until posted from the POS.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative shrink-0">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search drafts…"
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                className="w-full sm:w-60 pl-9 pr-3 py-2 bg-white border border-amber-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-extrabold border-b">
+                <tr>
+                  <th className="px-3 py-3">Draft #</th>
+                  <th className="px-3 py-3">Business</th>
+                  <th className="px-3 py-3">Customer</th>
+                  <th className="px-3 py-3 text-center">Items</th>
+                  <th className="px-3 py-3 text-right">Draft Value</th>
+                  <th className="px-3 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {draftSales.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-10 text-center">
+                      <Edit3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-slate-600">No draft sales.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Drafts saved from the POS appear here until they are posted.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  draftSales.map((s) => (
+                    <tr key={s.id} className="hover:bg-amber-50/40 transition-colors">
+                      <td className="px-3 py-3">
+                        <p className="font-mono font-bold text-amber-700 text-xs whitespace-nowrap">{s.id}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(s.createdAt)}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="inline-block px-1.5 py-1 rounded text-[9px] font-extrabold border bg-slate-50 text-slate-700 border-slate-200">
+                          {s.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-bold text-slate-900 text-xs truncate" title={s.customerName}>{s.customerName}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{s.customerPhone}</p>
+                      </td>
+                      <td className="px-3 py-3 text-center font-mono font-bold text-slate-600">
+                        {s.items.reduce((sum, i) => sum + i.quantity, 0)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono font-black text-slate-800">
+                        ৳{s.grandTotal.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => loadSaleIntoPOS(s)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            title="Open draft in POS to complete the sale"
+                            aria-label="Edit draft sale"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDraftPendingDelete(s)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            title="Delete this draft"
+                            aria-label="Delete draft sale"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {draftSales.length > 0 && (
+                <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-900">
+                  <tr>
+                    <td colSpan={4} className="px-3 py-3 text-right uppercase text-[11px]">
+                      Total Draft Value (not counted as sales)
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono">৳{draftValueTotal.toLocaleString()}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete draft confirmation */}
+      {draftPendingDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Delete this draft?</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Draft <span className="font-mono font-bold text-slate-700">{draftPendingDelete.id}</span> for{' '}
+                  <span className="font-bold text-slate-700">{draftPendingDelete.customerName}</span> (৳
+                  {draftPendingDelete.grandTotal.toLocaleString()}) will be permanently removed.
+                </p>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  No stock or payment is affected — a draft was never posted.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setDraftPendingDelete(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteSale(draftPendingDelete.id);
+                  setDraftPendingDelete(null);
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs shadow-md transition"
+              >
+                Delete Draft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'invoices' && (
         <>

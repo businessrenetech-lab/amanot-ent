@@ -13,8 +13,9 @@ export const CustomerReturnModal: React.FC<CustomerReturnModalProps> = ({
 }) => {
   const { sales, products, activeBusiness, addCustomerReturn } = useApp();
 
+  // Only posted invoices can be returned against — a draft never sold anything
   const availableSales = sales.filter(
-    (s) => activeBusiness === 'all' || s.business === activeBusiness
+    (s) => !s.isDraft && (activeBusiness === 'all' || s.business === activeBusiness)
   );
 
   const [invoiceId, setInvoiceId] = useState<string>(

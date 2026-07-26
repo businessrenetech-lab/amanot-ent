@@ -119,6 +119,9 @@ export const GlobalReportsView: React.FC = () => {
   // Filter raw collections by Business Scope and Date
   const filteredSales = useMemo(() => {
     return sales.filter((s) => {
+      // Drafts are unposted: no stock moved, no money taken. They are never sales.
+      if (s.isDraft) return false;
+
       if (businessScope !== 'all' && s.business !== businessScope) return false;
 
       if (dateMode === 'today' && s.createdAt !== todayStr) return false;
