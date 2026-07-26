@@ -66,40 +66,91 @@ export const BulkEditProductsModal: React.FC<BulkEditProductsModalProps> = ({
 
   if (!isOpen) return null;
 
+  /**
+   * Dry-run the same patch logic so the operator sees the consequences before
+   * committing: how many products end up priced at or below cost, and how much
+   * stock the batch moves.
+   */
+  const previewImpact = () => {
+    const safePrice = (value: number) => Math.max(0, Math.round(value));
+    let belowCost = 0;
+    let stockDelta = 0;
+    let stockChanged = 0;
+
+    selectedProducts.forEach((product) => {
+      let retail = product.retailPrice;
+      if (updateRetailPriceMode === 'fixed_value' && retailPriceValue > 0) retail = safePrice(retailPriceValue);
+      else if (updateRetailPriceMode === 'adjust_percent' && retailPriceValue !== 0)
+        retail = safePrice(product.retailPrice * (1 + retailPriceValue / 100));
+
+      let cost = product.costPrice;
+      if (updateCostPriceMode === 'percent_mrp') cost = safePrice(retail * (1 - costPriceValue / 100));
+      else if (updateCostPriceMode === 'fixed_value' && costPriceValue > 0) cost = safePrice(costPriceValue);
+      else if (updateCostPriceMode === 'adjust_percent' && costPriceValue !== 0)
+        cost = safePrice(product.costPrice * (1 + costPriceValue / 100));
+
+      if (retail > 0 && cost >= retail) belowCost += 1;
+
+      let nextStock = product.stockQty;
+      if (updateStockMode === 'set_exact') nextStock = Math.max(0, stockValue);
+      else if (updateStockMode === 'add_stock') nextStock = Math.max(0, product.stockQty + stockValue);
+      else if (updateStockMode === 'subtract_stock') nextStock = Math.max(0, product.stockQty - stockValue);
+
+      if (nextStock !== product.stockQty) {
+        stockChanged += 1;
+        stockDelta += nextStock - product.stockQty;
+      }
+    });
+
+    return { belowCost, stockDelta, stockChanged };
+  };
+
+  const impact = previewImpact();
+
   const handleApplyBulkEdits = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (impact.belowCost > 0) {
+      const ok = window.confirm(
+        `${impact.belowCost} of ${selectedProducts.length} product(s) would end up priced at or below cost — ` +
+          `every sale of those would book a loss.\n\nApply anyway?`
+      );
+      if (!ok) return;
+    }
+
     bulkUpdateProducts(selectedProductIds, (product) => {
       const patch: Partial<Product> = {};
+      // A price is never negative, whatever percentage was typed
+      const safePrice = (value: number) => Math.max(0, Math.round(value));
 
       // 1. Retail Price update
       let newRetail = product.retailPrice;
       if (updateRetailPriceMode === 'fixed_value' && retailPriceValue > 0) {
-        newRetail = retailPriceValue;
+        newRetail = safePrice(retailPriceValue);
         patch.retailPrice = newRetail;
       } else if (updateRetailPriceMode === 'adjust_percent' && retailPriceValue !== 0) {
-        newRetail = Math.round(product.retailPrice * (1 + retailPriceValue / 100));
+        newRetail = safePrice(product.retailPrice * (1 + retailPriceValue / 100));
         patch.retailPrice = newRetail;
       }
 
       // 2. Cost Price update
       if (updateCostPriceMode === 'percent_mrp') {
         // e.g. Cost = MRP - X%
-        patch.costPrice = Math.round(newRetail * (1 - costPriceValue / 100));
+        patch.costPrice = safePrice(newRetail * (1 - costPriceValue / 100));
       } else if (updateCostPriceMode === 'fixed_value' && costPriceValue > 0) {
-        patch.costPrice = costPriceValue;
+        patch.costPrice = safePrice(costPriceValue);
       } else if (updateCostPriceMode === 'adjust_percent' && costPriceValue !== 0) {
-        patch.costPrice = Math.round(product.costPrice * (1 + costPriceValue / 100));
+        patch.costPrice = safePrice(product.costPrice * (1 + costPriceValue / 100));
       }
 
       // 3. Wholesale Price update
       if (updateWholesalePriceMode === 'percent_mrp') {
         // e.g. Wholesale = MRP - X%
-        patch.wholesalePrice = Math.round(newRetail * (1 - wholesalePriceValue / 100));
+        patch.wholesalePrice = safePrice(newRetail * (1 - wholesalePriceValue / 100));
       } else if (updateWholesalePriceMode === 'fixed_value' && wholesalePriceValue > 0) {
-        patch.wholesalePrice = wholesalePriceValue;
+        patch.wholesalePrice = safePrice(wholesalePriceValue);
       } else if (updateWholesalePriceMode === 'adjust_percent' && wholesalePriceValue !== 0) {
-        patch.wholesalePrice = Math.round(product.wholesalePrice * (1 + wholesalePriceValue / 100));
+        patch.wholesalePrice = safePrice(product.wholesalePrice * (1 + wholesalePriceValue / 100));
       }
 
       // 4. Brand, Category, Business Scope
@@ -486,6 +537,26 @@ export const BulkEditProductsModal: React.FC<BulkEditProductsModalProps> = ({
           </div>
 
           {/* Footer Actions */}
+          {/* Impact preview — what these settings will actually do */}
+          {(impact.belowCost > 0 || impact.stockChanged > 0) && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-1.5">
+              <p className="text-[11px] font-black text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> Before you apply
+              </p>
+              {impact.belowCost > 0 && (
+                <p className="text-[11px] font-bold text-rose-700">
+                  {impact.belowCost} product(s) would end up priced at or below cost — those sales would book a loss.
+                </p>
+              )}
+              {impact.stockChanged > 0 && (
+                <p className="text-[11px] font-bold text-amber-800">
+                  Stock changes on {impact.stockChanged} product(s), net {impact.stockDelta >= 0 ? '+' : ''}
+                  {impact.stockDelta} pcs. Each change is logged to the Stock Adjustments audit trail.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               type="button"

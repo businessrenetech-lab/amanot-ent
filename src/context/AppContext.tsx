@@ -129,7 +129,11 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
-  bulkUpdateProducts: (ids: string[], updates: Partial<Product> | ((product: Product) => Partial<Product>)) => void;
+  bulkUpdateProducts: (
+    ids: string[],
+    updates: Partial<Product> | ((product: Product) => Partial<Product>),
+    options?: { stockReason?: string }
+  ) => void;
   bulkDeleteProducts: (ids: string[]) => void;
 
   customers: Customer[];
@@ -1056,24 +1060,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Product removed');
   };
 
-  const bulkUpdateProducts = (ids: string[], updates: Partial<Product> | ((product: Product) => Partial<Product>)) => {
+  const bulkUpdateProducts = (
+    ids: string[],
+    updates: Partial<Product> | ((product: Product) => Partial<Product>),
+    options?: { stockReason?: string }
+  ) => {
     if (!ids || ids.length === 0) return;
+
+    // Stock moved by a bulk edit must leave the same audit trail as a manual
+    // adjustment, otherwise inventory changes silently and never reaches the
+    // Stock Adjustments & Damage Audit report.
+    const stockLogs: StockAdjustment[] = [];
+    const stamp = Date.now();
+
     setProducts((prev) =>
       prev.map((p) => {
-        if (ids.includes(p.id)) {
-          const patch = typeof updates === 'function' ? updates(p) : updates;
-          return { ...p, ...patch };
+        if (!ids.includes(p.id)) return p;
+
+        const patch = typeof updates === 'function' ? updates(p) : updates;
+        const updated = { ...p, ...patch };
+
+        if (patch.stockQty !== undefined && patch.stockQty !== p.stockQty) {
+          const delta = patch.stockQty - p.stockQty;
+          stockLogs.push({
+            id: `ADJ-BULK-${stamp}-${stockLogs.length + 1}`,
+            business: updated.business,
+            productId: p.id,
+            productName: p.name,
+            sku: p.sku,
+            brand: p.brand,
+            category: p.category,
+            adjustmentType: delta > 0 ? 'increase' : 'decrease',
+            quantity: Math.abs(delta),
+            reason: options?.stockReason?.trim() || 'Bulk Edit Stock Update',
+            notes: `Bulk edit: ${p.stockQty} → ${patch.stockQty} (${ids.length} products in batch)`,
+            performedBy: currentUser.name,
+            createdAt: new Date().toISOString()
+          });
         }
-        return p;
+
+        return updated;
       })
     );
-    showToast(`Bulk updated ${ids.length} product(s). Changes active across all routes.`);
+
+    if (stockLogs.length > 0) {
+      setStockAdjustments((prev) => [...stockLogs, ...prev]);
+    }
+
+    showToast(
+      `Bulk updated ${ids.length} product(s).` +
+        (stockLogs.length > 0 ? ` ${stockLogs.length} stock change(s) logged for audit.` : '')
+    );
   };
 
   const bulkDeleteProducts = (ids: string[]) => {
     if (!ids || ids.length === 0) return;
+
+    // Removing a product that still holds stock writes off its inventory value,
+    // so log it the same way a damage/write-off would be logged.
+    const doomed = products.filter((p) => ids.includes(p.id) && p.stockQty > 0);
+    if (doomed.length > 0) {
+      const stamp = Date.now();
+      const writeOffs: StockAdjustment[] = doomed.map((p, idx) => ({
+        id: `ADJ-DEL-${stamp}-${idx + 1}`,
+        business: p.business,
+        productId: p.id,
+        productName: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        category: p.category,
+        adjustmentType: 'decrease',
+        quantity: p.stockQty,
+        reason: 'Product Deleted (Bulk)',
+        notes: `Product removed from catalogue while holding ${p.stockQty} pcs (cost value BDT ${(p.stockQty * p.costPrice).toLocaleString()}).`,
+        performedBy: currentUser.name,
+        createdAt: new Date().toISOString()
+      }));
+      setStockAdjustments((prev) => [...writeOffs, ...prev]);
+    }
+
     setProducts((prev) => prev.filter((p) => !ids.includes(p.id)));
-    showToast(`Successfully removed ${ids.length} selected product(s).`);
+    showToast(
+      `Removed ${ids.length} product(s).` +
+        (doomed.length > 0 ? ` ${doomed.length} still held stock — written off and logged.` : '')
+    );
   };
 
   const addCustomer = (custData: Omit<Customer, 'id' | 'totalPurchases' | 'currentDue' | 'createdAt'>): Customer => {

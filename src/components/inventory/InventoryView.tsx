@@ -132,6 +132,15 @@ export const InventoryView: React.FC = () => {
     );
   };
 
+  /**
+   * Selection survives filter changes, so a bulk edit can reach products that
+   * are no longer on screen. Surface that rather than letting it happen quietly.
+   */
+  const hiddenSelectedCount = useMemo(() => {
+    const visible = new Set(filteredProducts.map((p) => p.id));
+    return selectedProductIds.filter((id) => !visible.has(id)).length;
+  }, [filteredProducts, selectedProductIds]);
+
   // Inventory Metrics
   const totalItemsCount = filteredProducts.reduce((acc, p) => acc + p.stockQty, 0);
   const totalInventoryValue = filteredProducts.reduce((acc, p) => acc + p.stockQty * p.costPrice, 0);
@@ -353,6 +362,11 @@ export const InventoryView: React.FC = () => {
               <p className="text-[11px] text-amber-100 font-medium">
                 Bulk edits propagate instantly across POS grid, store catalog, and quotes.
               </p>
+              {hiddenSelectedCount > 0 && (
+                <p className="text-[11px] text-white font-extrabold mt-0.5 bg-rose-600/80 px-2 py-0.5 rounded inline-block">
+                  ⚠ {hiddenSelectedCount} selected item(s) are hidden by the current filter and will still be edited.
+                </p>
+              )}
             </div>
           </div>
 
