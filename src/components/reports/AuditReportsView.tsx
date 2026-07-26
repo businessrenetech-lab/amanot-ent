@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { generateBrandedReportPDF, ReportSection } from '../../utils/reportPdfGenerator';
+import { formatDate } from '../../utils/formatDate';
 
 export const AuditReportsView: React.FC = () => {
   const { sales, products, expenses, purchaseOrders, customerReturns, activeBusiness, currentUser, auditConfig, settings } = useApp();
@@ -234,6 +235,36 @@ export const AuditReportsView: React.FC = () => {
     return sliced;
   }, [purchaseOrders, businessScope, dateMode, todayStr, thisMonthPrefix, thisYearPrefix, fromDate, toDate, auditConfig, purchaseSearch]);
 
+  /**
+   * Every purchased product line across the audited POs, flattened so the report
+   * shows what was actually bought rather than a per-PO item count.
+   */
+  const auditedPurchaseLineItems = useMemo(() => {
+    return auditedPurchaseOrdersList.flatMap((po) =>
+      po.items.map((item, idx) => ({
+        key: `${po.id}_${idx}`,
+        poId: po.id,
+        date: po.createdAt,
+        supplierName: po.supplierName,
+        business: po.business,
+        paymentStatus: po.paymentStatus,
+        productName: item.productName,
+        sku: item.sku || '',
+        brand: item.brand || '',
+        category: item.category || '',
+        unit: item.unit || 'Pcs',
+        quantity: item.quantity,
+        costPrice: item.costPrice,
+        totalCost: item.totalCost ?? item.quantity * item.costPrice
+      }))
+    );
+  }, [auditedPurchaseOrdersList]);
+
+  const auditedPurchaseUnits = useMemo(
+    () => auditedPurchaseLineItems.reduce((sum, l) => sum + l.quantity, 0),
+    [auditedPurchaseLineItems]
+  );
+
   // 4. Audited Expenses List
   const auditedExpensesList = useMemo(() => {
     let pool = expenses.filter((e) => {
@@ -323,12 +354,31 @@ export const AuditReportsView: React.FC = () => {
 
     const purchaseData = auditedPurchaseOrdersList.map((po) => ({
       PurchaseOrderNo: po.id,
-      Date: po.createdAt,
+      Date: formatDate(po.createdAt),
       Supplier: po.supplierName,
       Branch: po.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise',
+      ItemLines: po.items.length,
+      UnitsPurchased: po.items.reduce((sum, i) => sum + i.quantity, 0),
       ReportedTotalCostBDT: po.totalCost,
       ReportedPaidBDT: po.paidAmount,
       Status: po.paymentStatus
+    }));
+
+    // Every purchased product line, one row each
+    const purchaseItemData = auditedPurchaseLineItems.map((l) => ({
+      PurchaseOrderNo: l.poId,
+      Date: formatDate(l.date),
+      Supplier: l.supplierName,
+      Branch: l.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise',
+      ProductName: l.productName,
+      SKU: l.sku,
+      Brand: l.brand,
+      Category: l.category,
+      Quantity: l.quantity,
+      Unit: l.unit,
+      UnitCostBDT: l.costPrice,
+      LineTotalBDT: l.totalCost,
+      PaymentStatus: l.paymentStatus
     }));
 
     const expenseData = auditedExpensesList.map((e) => ({
@@ -343,6 +393,7 @@ export const AuditReportsView: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(salesData), 'Tax_Sales_Audit');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productData), 'Tax_Product_Wise_Sales');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseData), 'Tax_Purchases_Audit');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseItemData), 'Tax_Purchased_Products');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseData), 'Tax_Expenses_Audit');
 
     XLSX.writeFile(wb, `Tax_Filing_Audit_Report_${businessScope}_${todayStr}.xlsx`);
@@ -393,8 +444,16 @@ export const AuditReportsView: React.FC = () => {
       heading: '4. Tax Purchase & Procurement',
       tableHeaders: ['PO No', 'Date', 'Supplier', 'Branch', 'Total Cost (BDT)', 'Paid (BDT)', 'Status'],
       tableData: auditedPurchaseOrdersList.map((po) => [
-        po.id, po.createdAt, po.supplierName, branchLabel(po.business),
+        po.id, formatDate(po.createdAt), po.supplierName, branchLabel(po.business),
         po.totalCost.toLocaleString(), po.paidAmount.toLocaleString(), po.paymentStatus.toUpperCase()
+      ])
+    },
+    {
+      heading: '4a. Purchased Product Details (all POs)',
+      tableHeaders: ['PO No', 'Date', 'Supplier', 'Product', 'Brand', 'Qty', 'Unit Cost', 'Line Total'],
+      tableData: auditedPurchaseLineItems.map((l) => [
+        l.poId, formatDate(l.date), l.supplierName, l.productName, l.brand || '-',
+        String(l.quantity), l.costPrice.toLocaleString(), l.totalCost.toLocaleString()
       ])
     },
     {
@@ -1025,6 +1084,78 @@ export const AuditReportsView: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Full purchased-product breakdown across every audited PO */}
+          <div className="space-y-2 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t pt-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Package className="w-4 h-4 text-indigo-600" />
+                Purchased Product Details ({auditedPurchaseLineItems.length} lines · {auditedPurchaseUnits} pcs)
+              </h3>
+              <span className="text-[11px] font-bold text-slate-500">
+                Every product on every reported PO
+              </span>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-100 font-bold text-slate-700 border-b">
+                  <tr>
+                    <th className="p-3">PO #</th>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Supplier</th>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">Brand / Category</th>
+                    <th className="p-3 text-center">Qty</th>
+                    <th className="p-3 text-right">Unit Cost</th>
+                    <th className="p-3 text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {auditedPurchaseLineItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-500 text-xs">
+                        No purchased products matched the audit filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditedPurchaseLineItems.map((l) => (
+                      <tr key={l.key} className="hover:bg-slate-50 transition">
+                        <td className="p-3 font-mono font-bold text-indigo-700 whitespace-nowrap">{l.poId}</td>
+                        <td className="p-3 font-mono text-slate-500 whitespace-nowrap">{formatDate(l.date)}</td>
+                        <td className="p-3 font-bold text-slate-700">{l.supplierName}</td>
+                        <td className="p-3 font-bold text-slate-900">
+                          <div>{l.productName}</div>
+                          {l.sku && <div className="text-[10px] font-mono text-slate-400">SKU: {l.sku}</div>}
+                        </td>
+                        <td className="p-3 text-slate-600">
+                          {l.brand || '—'}
+                          {l.category ? <span className="text-slate-400"> · {l.category}</span> : null}
+                        </td>
+                        <td className="p-3 text-center font-mono font-bold">
+                          {l.quantity} {l.unit}
+                        </td>
+                        <td className="p-3 text-right font-mono">৳{l.costPrice.toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono font-black text-slate-900">
+                          ৳{l.totalCost.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot className="bg-slate-50 font-bold text-slate-900 border-t">
+                  <tr>
+                    <td colSpan={5} className="p-3 text-right">Total Purchased:</td>
+                    <td className="p-3 text-center font-mono">{auditedPurchaseUnits} pcs</td>
+                    <td className="p-3"></td>
+                    <td className="p-3 text-right font-mono font-black">
+                      ৳{auditedPurchaseLineItems.reduce((s, l) => s + l.totalCost, 0).toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
       )}

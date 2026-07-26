@@ -208,6 +208,36 @@ export const GlobalReportsView: React.FC = () => {
     });
   }, [filteredPurchaseOrders, purchasesStatusFilter, purchasesSearch]);
 
+  /**
+   * Every purchased product line across the filtered POs, flattened so the report
+   * lists what was actually bought instead of only per-PO totals.
+   */
+  const purchaseLineItems = useMemo(() => {
+    return auditedPurchaseOrdersList.flatMap((po) =>
+      po.items.map((item, idx) => ({
+        key: `${po.id}_${idx}`,
+        poId: po.id,
+        date: po.createdAt,
+        supplierName: po.supplierName,
+        business: po.business,
+        paymentStatus: po.paymentStatus,
+        productName: item.productName,
+        sku: item.sku || '',
+        brand: item.brand || '',
+        category: item.category || '',
+        unit: item.unit || 'Pcs',
+        quantity: item.quantity,
+        costPrice: item.costPrice,
+        totalCost: item.totalCost ?? item.quantity * item.costPrice
+      }))
+    );
+  }, [auditedPurchaseOrdersList]);
+
+  const purchasedUnitsTotal = useMemo(
+    () => purchaseLineItems.reduce((sum, l) => sum + l.quantity, 0),
+    [purchaseLineItems]
+  );
+
   const filteredProducts = useMemo(() => {
     return products.filter((p) => (businessScope === 'all' ? true : p.business === businessScope));
   }, [products, businessScope]);
@@ -589,14 +619,32 @@ export const GlobalReportsView: React.FC = () => {
     // 3. Purchase Orders
     const purchaseData = auditedPurchaseOrdersList.map((po) => ({
       PurchaseOrderNo: po.id,
-      Date: po.createdAt,
+      Date: formatDate(po.createdAt),
       Business: po.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise',
       Supplier: po.supplierName,
+      ItemLines: po.items.length,
       ItemsCount: po.items.reduce((sum, i) => sum + i.quantity, 0),
       TotalCostBDT: po.totalCost,
       PaidAmountBDT: po.paidAmount,
       BalanceDueBDT: po.totalCost - po.paidAmount,
       PaymentStatus: po.paymentStatus
+    }));
+
+    // 4a. Every purchased product line, one row each
+    const purchaseItemData = purchaseLineItems.map((l) => ({
+      PurchaseOrderNo: l.poId,
+      Date: formatDate(l.date),
+      Business: l.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise',
+      Supplier: l.supplierName,
+      ProductName: l.productName,
+      SKU: l.sku,
+      Brand: l.brand,
+      Category: l.category,
+      Quantity: l.quantity,
+      Unit: l.unit,
+      UnitCostBDT: l.costPrice,
+      LineTotalBDT: l.totalCost,
+      PaymentStatus: l.paymentStatus
     }));
 
     // 4. Expenses
@@ -689,6 +737,7 @@ export const GlobalReportsView: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(categoryExportData), 'Category_Wise_Sales');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productSalesData), 'Product_Wise_Sales');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseData), 'Purchase_Orders_Audit');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(purchaseItemData), 'Purchased_Products_Detail');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseData), 'Expenses_Audit');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(instData), 'Installment_Collections');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(regularSalesData), 'Actual_Sales_Regular');
@@ -890,17 +939,37 @@ export const GlobalReportsView: React.FC = () => {
         dateFilterText: periodText,
         generatedBy: currentUser.name,
         settings,
-        tableHeaders: ['PO Number', 'Supplier Name', 'Date', 'Branch', 'Total Cost (BDT)', 'Paid Amount (BDT)', 'Due Amount (BDT)', 'Status'],
-        tableData: auditedPurchaseOrdersList.map((po) => [
-          po.id,
-          po.supplierName,
-          po.createdAt,
-          po.business === 'amanot_electronics' ? 'Electronics' : 'Enterprise',
-          po.totalCost.toLocaleString(),
-          po.paidAmount.toLocaleString(),
-          (po.totalCost - po.paidAmount).toLocaleString(),
-          po.paymentStatus.toUpperCase()
-        ]),
+        // `sections` replaces tableHeaders/tableData, so the PO summary is a section too
+        sections: [
+          {
+            heading: 'Purchase Orders Summary',
+            tableHeaders: ['PO Number', 'Supplier Name', 'Date', 'Branch', 'Total Cost (BDT)', 'Paid Amount (BDT)', 'Due Amount (BDT)', 'Status'],
+            tableData: auditedPurchaseOrdersList.map((po) => [
+              po.id,
+              po.supplierName,
+              formatDate(po.createdAt),
+              po.business === 'amanot_electronics' ? 'Electronics' : 'Enterprise',
+              po.totalCost.toLocaleString(),
+              po.paidAmount.toLocaleString(),
+              (po.totalCost - po.paidAmount).toLocaleString(),
+              po.paymentStatus.toUpperCase()
+            ])
+          },
+          {
+            heading: 'Purchased Product Details (all POs)',
+            tableHeaders: ['PO No', 'Date', 'Supplier', 'Product', 'Brand', 'Qty', 'Unit Cost', 'Line Total'],
+            tableData: purchaseLineItems.map((l) => [
+              l.poId,
+              formatDate(l.date),
+              l.supplierName,
+              l.productName,
+              l.brand || '-',
+              String(l.quantity),
+              l.costPrice.toLocaleString(),
+              l.totalCost.toLocaleString()
+            ])
+          }
+        ],
         fileName: `Amanot_Purchase_Orders_${todayStr}.pdf`
       });
     } else if (selectedReportType === 'expenses') {
@@ -1971,6 +2040,78 @@ export const GlobalReportsView: React.FC = () => {
               </table>
             </div>
           )}
+
+          {/* Full purchased-product breakdown across every PO in range */}
+          <div className="space-y-2 pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t pt-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Package className="w-4 h-4 text-purple-600" />
+                Purchased Product Details ({purchaseLineItems.length} lines · {purchasedUnitsTotal} pcs)
+              </h3>
+              <span className="text-[11px] font-bold text-slate-500">
+                Every product on every PO in this period
+              </span>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-100 font-bold text-slate-700 border-b">
+                  <tr>
+                    <th className="p-3">PO #</th>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Supplier</th>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">Brand / Category</th>
+                    <th className="p-3 text-center">Qty</th>
+                    <th className="p-3 text-right">Unit Cost</th>
+                    <th className="p-3 text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {purchaseLineItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-500 text-xs">
+                        No purchased products in this date range.
+                      </td>
+                    </tr>
+                  ) : (
+                    purchaseLineItems.map((l) => (
+                      <tr key={l.key} className="hover:bg-slate-50 transition">
+                        <td className="p-3 font-mono font-bold text-purple-700 whitespace-nowrap">{l.poId}</td>
+                        <td className="p-3 font-mono text-slate-500 whitespace-nowrap">{formatDate(l.date)}</td>
+                        <td className="p-3 font-bold text-slate-700">{l.supplierName}</td>
+                        <td className="p-3 font-bold text-slate-900">
+                          <div>{l.productName}</div>
+                          {l.sku && <div className="text-[10px] font-mono text-slate-400">SKU: {l.sku}</div>}
+                        </td>
+                        <td className="p-3 text-slate-600">
+                          {l.brand || '—'}
+                          {l.category ? <span className="text-slate-400"> · {l.category}</span> : null}
+                        </td>
+                        <td className="p-3 text-center font-mono font-bold">
+                          {l.quantity} {l.unit}
+                        </td>
+                        <td className="p-3 text-right font-mono">৳{l.costPrice.toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono font-black text-slate-900">
+                          ৳{l.totalCost.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot className="bg-slate-50 font-bold text-slate-900 border-t">
+                  <tr>
+                    <td colSpan={5} className="p-3 text-right">Total Purchased:</td>
+                    <td className="p-3 text-center font-mono">{purchasedUnitsTotal} pcs</td>
+                    <td className="p-3"></td>
+                    <td className="p-3 text-right font-mono font-black">
+                      ৳{purchaseLineItems.reduce((s, l) => s + l.totalCost, 0).toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
