@@ -26,6 +26,7 @@ import {
 import * as XLSX from 'xlsx';
 import { generateBrandedReportPDF, ReportSection } from '../../utils/reportPdfGenerator';
 import { formatDate } from '../../utils/formatDate';
+import { UnifiedStatementView } from './UnifiedStatementView';
 
 export const AuditReportsView: React.FC = () => {
   const { sales, products, expenses, purchaseOrders, customerReturns, activeBusiness, currentUser, auditConfig, settings } = useApp();
@@ -33,7 +34,7 @@ export const AuditReportsView: React.FC = () => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const isSuperAdmin = currentUser.role === 'super_admin';
 
-  const [auditTab, setAuditTab] = useState<'profit_loss' | 'sales' | 'product_sales' | 'purchases' | 'expenses'>('profit_loss');
+  const [auditTab, setAuditTab] = useState<'profit_loss' | 'sales' | 'product_sales' | 'purchases' | 'expenses' | 'statement'>('profit_loss');
 
   // Business Scope Filter (Combined or Separate Branches)
   const [businessScope, setBusinessScope] = useState<'all' | BusinessType>(activeBusiness);
@@ -677,7 +678,8 @@ export const AuditReportsView: React.FC = () => {
                 { id: 'sales', label: '2. Tax Sales Invoices Audit' },
                 { id: 'product_sales', label: '3. Product-Wise Tax Sales' },
                 { id: 'purchases', label: '4. Tax Purchase & Procurement' },
-                { id: 'expenses', label: '5. Tax Business Expenses' }
+                { id: 'expenses', label: '5. Tax Business Expenses' },
+                { id: 'statement', label: '6. Consolidated Statement (All-in-One)' }
               ].map((tab) => (
                 <option key={tab.id} value={tab.id} className="bg-white text-slate-800 font-semibold">
                   {tab.label}
@@ -1157,6 +1159,22 @@ export const AuditReportsView: React.FC = () => {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 6. CONSOLIDATED BANK-STYLE STATEMENT (audited figures) */}
+      {auditTab === 'statement' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <UnifiedStatementView
+            sales={auditedSalesList}
+            purchaseOrders={auditedPurchaseOrdersList}
+            expenses={auditedExpensesList}
+            customerReturns={auditedReturnsList}
+            profitMarginMultiplier={auditConfig.profitMarginMultiplier ?? 0.8}
+            periodLabel={getDateFilterLabel()}
+            adjustedNote={`Reported figures only — gross profit scaled by ${auditConfig.profitMarginMultiplier ?? 0.8}x per audit config.`}
+            accent="indigo"
+          />
         </div>
       )}
 

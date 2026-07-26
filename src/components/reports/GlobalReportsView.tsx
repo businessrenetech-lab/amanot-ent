@@ -38,6 +38,7 @@ import {
 import * as XLSX from 'xlsx';
 import { generateBrandedReportPDF } from '../../utils/reportPdfGenerator';
 import { formatDate } from '../../utils/formatDate';
+import { UnifiedStatementView } from './UnifiedStatementView';
 
 export const GlobalReportsView: React.FC = () => {
   const {
@@ -70,6 +71,7 @@ export const GlobalReportsView: React.FC = () => {
     | 'stocks'
     | 'category_sales'
     | 'referral_sales'
+    | 'statement'
   >('profit_loss');
 
   const [businessScope, setBusinessScope] = useState<'all' | BusinessType>(activeBusiness);
@@ -1160,7 +1162,8 @@ export const GlobalReportsView: React.FC = () => {
                 { id: 'cash_flow', label: '10. Realized Cash Flow' },
                 { id: 'receivables', label: '11. Receivables & Aging' },
                 { id: 'stocks', label: '12. Inventory Stock Valuation' },
-                { id: 'referral_sales', label: '13. Referral (SP Discount) Sales' }
+                { id: 'referral_sales', label: '13. Referral (SP Discount) Sales' },
+                { id: 'statement', label: '14. Consolidated Statement (All-in-One)' }
               ].map((mod) => (
                 <option key={mod.id} value={mod.id} className="bg-white text-slate-800 font-semibold">
                   {mod.label}
@@ -2456,6 +2459,21 @@ export const GlobalReportsView: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 14. CONSOLIDATED BANK-STYLE STATEMENT */}
+      {selectedReportType === 'statement' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <UnifiedStatementView
+            sales={filteredSales}
+            purchaseOrders={filteredPurchaseOrders}
+            expenses={filteredExpenses}
+            customerReturns={filteredCustomerReturns}
+            damageLogs={filteredDamageLogs}
+            periodLabel={dateMode.replace('_', ' ').toUpperCase()}
+            accent="purple"
+          />
         </div>
       )}
 
