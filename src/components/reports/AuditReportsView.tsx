@@ -133,51 +133,46 @@ export const AuditReportsView: React.FC = () => {
       netProfit: number;
     }> = {};
 
-    // Get products matching active business scope and allowed categories/brands
-    let matchedProducts = products.filter((p) => (businessScope === 'all' ? true : p.business === businessScope));
-
-    if (auditConfig.allowedCategories && auditConfig.allowedCategories.length > 0) {
-      matchedProducts = matchedProducts.filter((p) => auditConfig.allowedCategories.includes(p.category || 'General'));
-    }
-
-    if (auditConfig.allowedBrands && auditConfig.allowedBrands.length > 0) {
-      matchedProducts = matchedProducts.filter((p) => auditConfig.allowedBrands.includes(p.brand));
-    }
-
-    // Cap product list if configured
-    const maxProds = auditConfig.maxProductCountToInclude ?? 20;
-    if (maxProds > 0 && matchedProducts.length > maxProds) {
-      matchedProducts = matchedProducts.slice(0, maxProds);
-    }
-
-    matchedProducts.forEach((p) => {
-      map[p.id] = {
-        id: p.id,
-        name: p.name,
-        brand: p.brand,
-        category: p.category,
-        stockQty: p.stockQty,
-        qtySold: 0,
-        revenue: 0,
-        cogs: 0,
-        netProfit: 0
-      };
-    });
-
-    // Accumulate sales from auditedSalesList
+    // Build from what actually sold, using the invoice line snapshots. Driving this
+    // from the sales (rather than from a slice of the catalogue) means every audited
+    // sale is counted, including products since deleted or renamed.
     auditedSalesList.forEach((s) => {
       s.items.forEach((item) => {
-        if (map[item.productId]) {
-          map[item.productId].qtySold += item.quantity;
-          map[item.productId].revenue += item.total;
-          const c = item.costPrice * item.quantity;
-          map[item.productId].cogs += c;
-          map[item.productId].netProfit += item.total - c;
+        const product = products.find((p) => p.id === item.productId);
+
+        if (!map[item.productId]) {
+          map[item.productId] = {
+            id: item.productId,
+            name: item.productName || product?.name || 'Unknown Product',
+            brand: item.brand || product?.brand || 'Generic',
+            category: item.category || product?.category || 'General',
+            stockQty: product?.stockQty ?? 0,
+            qtySold: 0,
+            revenue: 0,
+            cogs: 0,
+            netProfit: 0
+          };
         }
+
+        map[item.productId].qtySold += item.quantity;
+        map[item.productId].revenue += item.total;
+        const c = item.costPrice * item.quantity;
+        map[item.productId].cogs += c;
+        map[item.productId].netProfit += item.total - c;
       });
     });
 
-    let list = Object.values(map);
+    // Sales-only report: a product that did not sell has no place in it
+    let list = Object.values(map).filter((p) => p.qtySold > 0);
+
+    // Audit scoping by category / brand
+    if (auditConfig.allowedCategories && auditConfig.allowedCategories.length > 0) {
+      list = list.filter((p) => auditConfig.allowedCategories.includes(p.category || 'General'));
+    }
+
+    if (auditConfig.allowedBrands && auditConfig.allowedBrands.length > 0) {
+      list = list.filter((p) => auditConfig.allowedBrands.includes(p.brand));
+    }
 
     if (productSearch.trim()) {
       const q = productSearch.toLowerCase();
@@ -189,7 +184,16 @@ export const AuditReportsView: React.FC = () => {
       );
     }
 
-    return list.sort((a, b) => b.revenue - a.revenue || b.qtySold - a.qtySold);
+    list.sort((a, b) => b.revenue - a.revenue || b.qtySold - a.qtySold);
+
+    // Cap LAST, so it keeps the top sellers by revenue instead of an arbitrary
+    // slice of the catalogue in storage order.
+    const maxProds = auditConfig.maxProductCountToInclude ?? 20;
+    if (maxProds > 0 && list.length > maxProds) {
+      list = list.slice(0, maxProds);
+    }
+
+    return list;
   }, [products, auditedSalesList, businessScope, auditConfig, productSearch]);
 
   // 3. Audited Purchases List
