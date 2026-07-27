@@ -74,7 +74,15 @@ export const SuppliersView: React.FC = () => {
   const [poPayChequeNo, setPoPayChequeNo] = useState<string>('');
   const [poPayChequeDate, setPoPayChequeDate] = useState<string>('');
   const [poPayVoucherNo, setPoPayVoucherNo] = useState<string>('');
+  const [poPayBankSlip, setPoPayBankSlip] = useState<string>('');
   const [poPayNotes, setPoPayNotes] = useState<string>('');
+
+  // Derive the payment method from the selected account's type
+  // (e.g. a DBBL account -> bank, a bKash account -> mfs).
+  const methodFromAccount = (accId: string): 'cash' | 'bank' | 'mfs' | 'cheque' => {
+    const acc = accounts.find((a) => a.id === accId);
+    return acc ? acc.type : 'cash';
+  };
 
   // Standalone Supplier Payment Modal State
   const [isPaySupplierModalOpen, setIsPaySupplierModalOpen] = useState(false);
@@ -161,11 +169,13 @@ export const SuppliersView: React.FC = () => {
     setSelectedPODue(po);
     setPoPayAmount(remainingDue);
     setPoPayDate(new Date().toISOString().split('T')[0]);
-    setPoPayAccountId(accounts[0]?.id || '');
-    setPoPayPaymentMethod('cash');
+    const defaultAccId = accounts[0]?.id || '';
+    setPoPayAccountId(defaultAccId);
+    setPoPayPaymentMethod(methodFromAccount(defaultAccId));
     setPoPayChequeNo('');
     setPoPayChequeDate('');
     setPoPayVoucherNo(`VCH-PO-${po.id}`);
+    setPoPayBankSlip('');
     setPoPayNotes(`Payment for Purchase Order #${po.id}`);
   };
 
@@ -191,6 +201,7 @@ export const SuppliersView: React.FC = () => {
       chequeDate: poPayChequeDate || undefined,
       chequeStatus: poPayPaymentMethod === 'cheque' ? 'pending' : undefined,
       voucherNo: poPayVoucherNo || undefined,
+      bankSlipUrl: poPayPaymentMethod === 'bank' || poPayPaymentMethod === 'mfs' ? poPayBankSlip || undefined : undefined,
       notes: poPayNotes || undefined,
       recordedBy: currentUser?.name || 'Admin'
     });
@@ -233,16 +244,18 @@ export const SuppliersView: React.FC = () => {
     setIsPaySupplierModalOpen(true);
   };
 
-  const handleBankSlipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const readSlip = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: string) => void) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const result = ev.target?.result as string;
-      if (result) setSpBankSlip(result);
+      if (result) setter(result);
     };
     reader.readAsDataURL(file);
   };
+  const handleBankSlipUpload = (e: React.ChangeEvent<HTMLInputElement>) => readSlip(e, setSpBankSlip);
+  const handlePoPayBankSlipUpload = (e: React.ChangeEvent<HTMLInputElement>) => readSlip(e, setPoPayBankSlip);
 
   const handleSupplierPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1097,12 +1110,17 @@ export const SuppliersView: React.FC = () => {
                 <label className="font-bold text-slate-700 block mb-1">Pay From Bank / Cash Account *</label>
                 <select
                   value={poPayAccountId}
-                  onChange={(e) => setPoPayAccountId(e.target.value)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setPoPayAccountId(id);
+                    // Payment method follows the account type (DBBL → bank, bKash → mfs, …)
+                    setPoPayPaymentMethod(methodFromAccount(id));
+                  }}
                   className="w-full p-2.5 border rounded-xl font-bold bg-white text-slate-900"
                 >
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.accountName} (Current Bal: ৳{a.currentBalance.toLocaleString()})
+                      {a.accountName} [{a.type.toUpperCase()}] (Current Bal: ৳{a.currentBalance.toLocaleString()})
                     </option>
                   ))}
                 </select>
@@ -1156,6 +1174,32 @@ export const SuppliersView: React.FC = () => {
                       className="w-full p-2 border rounded-lg bg-white"
                     />
                   </div>
+                </div>
+              )}
+
+              {(poPayPaymentMethod === 'bank' || poPayPaymentMethod === 'mfs') && (
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 space-y-2">
+                  <label className="font-bold text-blue-900 block">Bank / Mobile Banking Transfer Slip</label>
+                  {poPayBankSlip ? (
+                    <div className="flex items-center gap-3">
+                      {poPayBankSlip.startsWith('data:image') || /\.(png|jpe?g|webp|gif)$/i.test(poPayBankSlip) ? (
+                        <img src={poPayBankSlip} alt="Bank slip" className="h-16 w-auto rounded-lg border border-blue-200 object-contain bg-white" />
+                      ) : (
+                        <span className="text-xs font-bold text-blue-800">Slip attached (PDF/file)</span>
+                      )}
+                      <a href={poPayBankSlip} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-blue-700 underline">
+                        View
+                      </a>
+                      <button type="button" onClick={() => setPoPayBankSlip('')} className="text-[11px] font-bold text-rose-600 hover:underline">
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-300 cursor-pointer transition w-max">
+                    <Upload className="w-4 h-4" />
+                    {poPayBankSlip ? 'Replace Slip' : 'Upload Slip (Image/PDF)'}
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePoPayBankSlipUpload} />
+                  </label>
                 </div>
               )}
 
