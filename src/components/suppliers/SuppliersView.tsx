@@ -28,7 +28,8 @@ import {
   CreditCard,
   Check,
   AlertCircle,
-  Printer
+  Printer,
+  Upload
 } from 'lucide-react';
 import { SupplierRequisitionModal } from './SupplierRequisitionModal';
 import { BulkProductEntryModal } from './BulkProductEntryModal';
@@ -88,6 +89,7 @@ export const SuppliersView: React.FC = () => {
   const [spChequeDate, setSpChequeDate] = useState<string>('');
   const [spChequeStatus, setSpChequeStatus] = useState<'pending' | 'cleared' | 'bounced'>('pending');
   const [spVoucherNo, setSpVoucherNo] = useState<string>('');
+  const [spBankSlip, setSpBankSlip] = useState<string>('');
   const [spNotes, setSpNotes] = useState<string>('');
 
   // Date Filtering State for Supplier Payments
@@ -209,6 +211,7 @@ export const SuppliersView: React.FC = () => {
     setSpChequeDate('');
     setSpChequeStatus('pending');
     setSpVoucherNo(`VCH-${Math.floor(1000 + Math.random() * 9000)}`);
+    setSpBankSlip('');
     setSpNotes('Supplier payment for inventory settlement');
     setIsPaySupplierModalOpen(true);
   };
@@ -225,8 +228,20 @@ export const SuppliersView: React.FC = () => {
     setSpChequeDate(sp.chequeDate || '');
     setSpChequeStatus(sp.chequeStatus || 'pending');
     setSpVoucherNo(sp.voucherNo || '');
+    setSpBankSlip(sp.bankSlipUrl || '');
     setSpNotes(sp.notes || '');
     setIsPaySupplierModalOpen(true);
+  };
+
+  const handleBankSlipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      if (result) setSpBankSlip(result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSupplierPaymentSubmit = (e: React.FormEvent) => {
@@ -252,6 +267,7 @@ export const SuppliersView: React.FC = () => {
         chequeDate: spChequeDate || undefined,
         chequeStatus: spPaymentMethod === 'cheque' ? spChequeStatus : undefined,
         voucherNo: spVoucherNo || undefined,
+        bankSlipUrl: spPaymentMethod === 'bank' || spPaymentMethod === 'mfs' ? spBankSlip || undefined : undefined,
         notes: spNotes || undefined
       });
     } else {
@@ -268,6 +284,7 @@ export const SuppliersView: React.FC = () => {
         chequeDate: spChequeDate || undefined,
         chequeStatus: spPaymentMethod === 'cheque' ? 'pending' : undefined,
         voucherNo: spVoucherNo || undefined,
+        bankSlipUrl: spPaymentMethod === 'bank' || spPaymentMethod === 'mfs' ? spBankSlip || undefined : undefined,
         notes: spNotes || undefined,
         recordedBy: currentUser?.name || 'Admin'
       });
@@ -1274,6 +1291,38 @@ export const SuppliersView: React.FC = () => {
                       <option value="bounced">Bounced</option>
                     </select>
                   </div>
+                </div>
+              )}
+
+              {(spPaymentMethod === 'bank' || spPaymentMethod === 'mfs') && (
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 space-y-2">
+                  <label className="font-bold text-blue-900 block">
+                    Bank / Mobile Banking Transfer Slip
+                  </label>
+                  {spBankSlip ? (
+                    <div className="flex items-center gap-3">
+                      {spBankSlip.startsWith('data:image') || /\.(png|jpe?g|webp|gif)$/i.test(spBankSlip) ? (
+                        <img src={spBankSlip} alt="Bank slip" className="h-16 w-auto rounded-lg border border-blue-200 object-contain bg-white" />
+                      ) : (
+                        <span className="text-xs font-bold text-blue-800">Slip attached (PDF/file)</span>
+                      )}
+                      <a href={spBankSlip} target="_blank" rel="noreferrer" className="text-[11px] font-bold text-blue-700 underline">
+                        View
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setSpBankSlip('')}
+                        className="text-[11px] font-bold text-rose-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+                  <label className="inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg border border-blue-300 cursor-pointer transition w-max">
+                    <Upload className="w-4 h-4" />
+                    {spBankSlip ? 'Replace Slip' : 'Upload Slip (Image/PDF)'}
+                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleBankSlipUpload} />
+                  </label>
                 </div>
               )}
 

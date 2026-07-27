@@ -17,6 +17,18 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
     (p) => activeBusiness === 'all' || p.business === activeBusiness
   );
 
+  const [productSearch, setProductSearch] = useState('');
+  const matchesProduct = (p: (typeof availableProducts)[number]) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      (p.model ? p.model.toLowerCase().includes(q) : false)
+    );
+  };
+
   const [supplierId, setSupplierId] = useState<string>(availableSuppliers[0]?.id || '');
   const [returnItems, setReturnItems] = useState<
     Array<{
@@ -184,6 +196,13 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
                 <Plus className="w-3.5 h-3.5" /> Add Another Item
               </button>
             </div>
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search products by name, SKU, brand or model to filter the dropdowns…"
+              className="w-full border border-slate-300 rounded-xl p-2 text-xs font-medium text-slate-800 bg-slate-50 focus:ring-2 focus:ring-indigo-500"
+            />
 
             <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
               {returnItems.map((item, idx) => (
@@ -198,11 +217,13 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
                       onChange={(e) => handleProductChange(idx, e.target.value)}
                       className="w-full border border-slate-300 rounded-lg p-1.5 text-xs font-bold bg-white"
                     >
-                      {availableProducts.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          [{p.brand}] {p.name}
-                        </option>
-                      ))}
+                      {availableProducts
+                        .filter((p) => p.id === item.productId || matchesProduct(p))
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{p.brand}] {p.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

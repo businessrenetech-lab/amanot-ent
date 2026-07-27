@@ -306,6 +306,7 @@ export function exportCustomerInvoicePDF(
       <tr>
         <th style="width: 45px;" class="text-center">SL. NO.</th>
         <th class="text-left">DESCRIPTION</th>
+        <th style="width: 50px;" class="text-center">QTY</th>
         <th style="width: 100px;" class="text-right">UNIT PRICE</th>
         <th style="width: 110px;" class="text-right">AMOUNT (BDT)</th>
       </tr>
@@ -320,8 +321,9 @@ export function exportCustomerInvoicePDF(
             <div class="font-black uppercase" style="font-size: 13px;">${item.productName}</div>
             <div style="font-size: 10px; color: #334155; margin-top: 2px;">
               Brand: ${item.brand}
-              ${item.model ? ` | Model: <strong>${item.model}</strong>` : ''}
+              ${item.typeSeries ? ` | Type: ${item.typeSeries}` : ''}
               ${item.acType ? ` | ${item.acType}` : ''}
+              ${item.size ? ` | Size: ${item.size}` : ''}
               ${item.capacity ? ` | Cap: <strong>${item.capacity}</strong>` : ''}
             </div>
             ${
@@ -333,6 +335,7 @@ export function exportCustomerInvoicePDF(
                 : ''
             }
           </td>
+          <td class="text-center font-mono font-bold">${item.quantity}</td>
           <td class="text-right font-mono font-bold">৳${item.unitPrice.toLocaleString()}</td>
           <td class="text-right font-mono font-black">৳${item.total.toLocaleString()}</td>
         </tr>
@@ -341,7 +344,7 @@ export function exportCustomerInvoicePDF(
         .join('')}
 
       <tr class="summary-row">
-        <td colSpan="2" style="border-right: 1px solid #000000;"></td>
+        <td colSpan="3" style="border-right: 1px solid #000000;"></td>
         <td class="text-right">Subtotal:</td>
         <td class="text-right font-mono font-bold">৳${invoice.subtotal.toLocaleString()}</td>
       </tr>
@@ -350,7 +353,7 @@ export function exportCustomerInvoicePDF(
         invoice.discountTotal > 0
           ? `
       <tr class="summary-row">
-        <td colSpan="2" style="border-right: 1px solid #000000;">
+        <td colSpan="3" style="border-right: 1px solid #000000;">
           Sl. No: <span class="font-mono" style="font-weight: normal;">${itemSerials || 'Verified at Delivery'}</span>
         </td>
         <td class="text-right">Less Discount:</td>
@@ -361,7 +364,7 @@ export function exportCustomerInvoicePDF(
       }
 
       <tr style="background: #e2e8f0; font-weight: 900; font-size: 13px;">
-        <td colSpan="2" style="font-size: 10.5px; border-right: 1px solid #000000;">
+        <td colSpan="3" style="font-size: 10.5px; border-right: 1px solid #000000;">
           N.B. Goods Once Sold Are Not Refundable
         </td>
         <td class="text-right uppercase" style="font-size: 11px;">Total Tk.</td>

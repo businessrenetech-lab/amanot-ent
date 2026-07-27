@@ -398,6 +398,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   <tr className="text-black font-extrabold uppercase border-b-2 border-black text-center" style={{ backgroundColor: '#e2e8f0', color: '#000000' }}>
                     <th className="p-2 border-r border-black w-12">SL. No.</th>
                     <th className="p-2 border-r border-black text-left">Description</th>
+                    <th className="p-2 border-r border-black w-14 text-center">Qty</th>
                     <th className="p-2 border-r border-black w-24 text-right">Unit Price</th>
                     <th className="p-2 w-28 text-right">Amount (BDT)</th>
                   </tr>
@@ -414,7 +415,6 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                         </div>
                         <div className="text-[10px] font-semibold text-slate-700 space-x-1.5 leading-tight">
                           <span>Brand: {item.brand}</span>
-                          {item.model && <span>| Model: <strong>{item.model}</strong></span>}
                           {item.typeSeries && <span>| Type: {item.typeSeries}</span>}
                           {item.acType && <span>| {item.acType}</span>}
                           {item.size && <span>| Size: {item.size}</span>}
@@ -427,6 +427,9 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                           </div>
                         ) : null}
                       </td>
+                      <td className="p-2 border-r border-black text-center font-mono font-bold">
+                        {item.quantity}
+                      </td>
                       <td className="p-2 border-r border-black text-right font-mono font-bold">
                         ৳{item.unitPrice.toLocaleString()}
                       </td>
@@ -438,7 +441,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
 
                   {/* Summary Rows Inside Table (matching attached invoice pad structure) */}
                   <tr className="border-t-2 border-black" style={{ backgroundColor: '#f8fafc', color: '#000000' }}>
-                    <td colSpan={2} className="p-2 border-r border-black font-bold">
+                    <td colSpan={3} className="p-2 border-r border-black font-bold">
                       Model: <span className="font-normal font-mono">{itemModels || 'Standard Showroom Spec'}</span>
                     </td>
                     <td className="p-2 border-r border-black font-bold text-right">Subtotal:</td>
@@ -447,7 +450,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
 
                   {invoice.discountTotal > 0 && (
                     <tr style={{ backgroundColor: '#f8fafc', color: '#000000' }}>
-                      <td colSpan={2} className="p-2 border-r border-black font-bold text-xs">
+                      <td colSpan={3} className="p-2 border-r border-black font-bold text-xs">
                         Sl. No: <span className="font-normal font-mono">{itemSerials || 'Verified at Delivery'}</span>
                       </td>
                       <td className="p-2 border-r border-black font-bold text-right">Less Discount:</td>
@@ -456,7 +459,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   )}
 
                   <tr className="border-t-2 border-black text-black font-extrabold text-sm" style={{ backgroundColor: '#f1f5f9', color: '#000000' }}>
-                    <td colSpan={2} className="p-2 border-r border-black text-[11px] font-bold">
+                    <td colSpan={3} className="p-2 border-r border-black text-[11px] font-bold">
                       N.B. Goods Once Sold Are Not Refundable
                     </td>
                     <td className="p-2 border-r border-black text-right font-bold uppercase text-xs">Total Tk.</td>
@@ -638,10 +641,9 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                       <td className="p-3 text-slate-400 font-mono text-xs">{idx + 1}</td>
                       <td className="p-3 font-semibold text-slate-900">
                         <span className="text-sm font-bold">{item.productName}</span>
-                        {(item.model || item.typeSeries || item.acType || item.capacity || item.size) && (
+                        {(item.typeSeries || item.acType || item.capacity || item.size) && (
                           <div className="text-[10px] text-slate-500 font-mono mt-0.5 space-x-1 leading-tight">
-                            {item.model && <span>Model: <strong>{item.model}</strong></span>}
-                            {item.typeSeries && <span>• Type: <strong>{item.typeSeries}</strong></span>}
+                            {item.typeSeries && <span>Type: <strong>{item.typeSeries}</strong></span>}
                             {item.acType && <span>• {item.acType}</span>}
                             {item.size && <span>• Size: <strong>{item.size}</strong></span>}
                             {item.capacity && <span>• Cap: <strong>{item.capacity}</strong></span>}

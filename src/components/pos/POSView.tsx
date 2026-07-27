@@ -100,6 +100,7 @@ export const POSView: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
   const [customerPaymentNumber, setCustomerPaymentNumber] = useState('');
   const [overallDiscount, setOverallDiscount] = useState<number>(0);
+  const [discountMode, setDiscountMode] = useState<'amount' | 'percent'>('amount');
 
   // Special (referral) discount — internal only, never printed on the customer invoice
   const [showSpDiscount, setShowSpDiscount] = useState<boolean>(false);
@@ -428,9 +429,18 @@ export const POSView: React.FC = () => {
     }, 0);
   }, [cart]);
 
+  // Resolved discount in BDT (supports flat ৳ or % of the pre-discount bill)
+  const discountAmount = useMemo(() => {
+    const base = productsSubtotal + installationFeeTotal;
+    if (discountMode === 'percent') {
+      return Math.round((base * Math.min(100, Math.max(0, overallDiscount || 0))) / 100);
+    }
+    return Math.max(0, overallDiscount || 0);
+  }, [discountMode, overallDiscount, productsSubtotal, installationFeeTotal]);
+
   const grandTotal = useMemo(() => {
-    return Math.max(0, productsSubtotal + installationFeeTotal - overallDiscount);
-  }, [productsSubtotal, installationFeeTotal, overallDiscount]);
+    return Math.max(0, productsSubtotal + installationFeeTotal - discountAmount);
+  }, [productsSubtotal, installationFeeTotal, discountAmount]);
 
   // Referral payout we absorb. It never reduces what the customer pays.
   const specialDiscountAmount = useMemo(() => {
@@ -523,7 +533,7 @@ export const POSView: React.FC = () => {
         customerPhone: customerPhone.trim() || '01700000000',
         customerAddress: customerAddress.trim() || 'Showroom Counter',
         items: formattedItems,
-        discountTotal: overallDiscount,
+        discountTotal: discountAmount,
         specialDiscount: specialDiscountAmount,
         specialDiscountMode: specialDiscountAmount > 0 ? spDiscountMode : undefined,
         specialDiscountRate:
@@ -550,7 +560,7 @@ export const POSView: React.FC = () => {
         customerPhone: customerPhone.trim() || '01700000000',
         customerAddress: customerAddress.trim() || 'Showroom Counter',
         items: formattedItems,
-        discountTotal: overallDiscount,
+        discountTotal: discountAmount,
         specialDiscount: specialDiscountAmount,
         specialDiscountMode: specialDiscountAmount > 0 ? spDiscountMode : undefined,
         specialDiscountRate:
@@ -1071,20 +1081,6 @@ export const POSView: React.FC = () => {
                             )}
                           </button>
                         )}
-
-                        {item.includeInstallationFee && (
-                          <div className="flex items-center gap-0.5 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 text-[10px]" title="Extra piping feet over 10ft">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={item.extraPipingFt || ''}
-                              onChange={(e) => updateItemExtraPipingFt(item.product.id, Math.max(0, Number(e.target.value)))}
-                              className="w-10 px-1 text-center font-mono font-bold bg-white border border-slate-300 rounded text-slate-900 focus:outline-none"
-                            />
-                            <span className="text-[9px] text-slate-500 font-bold">ft</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -1316,19 +1312,34 @@ export const POSView: React.FC = () => {
                   </div>
                 )}
                 <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-600 font-semibold">Discount (BDT)</span>
-                  <input
-                    type="number"
-                    value={overallDiscount || ''}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const disc = Number(e.target.value);
-                      setOverallDiscount(disc);
-                      const newGrand = Math.max(0, productsSubtotal + installationFeeTotal - disc);
-                      if (paidAmount > newGrand) setPaidAmount(newGrand);
-                    }}
-                    className="w-20 px-2 py-0.5 bg-white border border-slate-300 rounded text-right font-mono font-bold text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+                  <span className="text-slate-600 font-semibold">
+                    Discount{discountMode === 'percent' && discountAmount > 0 ? ` (−৳${discountAmount.toLocaleString()})` : ''}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <div className="flex rounded border border-slate-300 overflow-hidden shrink-0">
+                      {(['amount', 'percent'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setDiscountMode(mode)}
+                          className={`px-1.5 py-0.5 text-[10px] font-extrabold transition ${
+                            discountMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {mode === 'amount' ? '৳' : '%'}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      max={discountMode === 'percent' ? 100 : undefined}
+                      value={overallDiscount || ''}
+                      placeholder={discountMode === 'percent' ? '0 %' : '0'}
+                      onChange={(e) => setOverallDiscount(Math.max(0, Number(e.target.value)))}
+                      className="w-16 px-2 py-0.5 bg-white border border-slate-300 rounded text-right font-mono font-bold text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Special (referral) discount — internal, never printed for the customer */}

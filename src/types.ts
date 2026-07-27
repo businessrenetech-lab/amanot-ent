@@ -388,6 +388,7 @@ export interface SupplierPayment {
   chequeDate?: string;
   chequeStatus?: 'pending' | 'cleared' | 'bounced';
   voucherNo?: string;
+  bankSlipUrl?: string; // uploaded bank/MFS transfer slip (base64 data URI or URL)
   notes?: string;
   recordedBy: string;
   createdAt: string;

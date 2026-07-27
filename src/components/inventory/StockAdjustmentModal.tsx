@@ -20,6 +20,17 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   const [productId, setProductId] = useState<string>(
     preSelectedProductId || (availableProducts[0]?.id ?? '')
   );
+  const [productSearch, setProductSearch] = useState('');
+  const pickList = availableProducts.filter((p) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      (p.model ? p.model.toLowerCase().includes(q) : false)
+    );
+  });
   const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
   const [quantity, setQuantity] = useState<number>(1);
   const [reason, setReason] = useState<string>('Physical Audit Count Variance');
@@ -78,12 +89,21 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
           {/* Product Select */}
           <div>
             <label className="text-slate-600 font-bold block mb-1">Select Product *</label>
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search product by name, SKU, brand or model…"
+              className="w-full mb-1.5 border border-slate-300 rounded-xl p-2 text-xs font-medium text-slate-800 bg-slate-50 focus:ring-2 focus:ring-blue-500"
+            />
             <select
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
+              size={productSearch.trim() ? Math.min(6, pickList.length || 1) : undefined}
               className="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500"
             >
-              {availableProducts.map((p) => (
+              {pickList.length === 0 && <option value="">No matching products</option>}
+              {pickList.map((p) => (
                 <option key={p.id} value={p.id}>
                   [{p.brand}] {p.name} (Stock: {p.stockQty} {p.unit})
                 </option>

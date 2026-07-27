@@ -41,6 +41,17 @@ export const SupplierRequisitionModal: React.FC<Props> = ({
   } = useApp();
 
   const [business, setBusiness] = useState<BusinessType>('amanot_electronics');
+  const [productSearch, setProductSearch] = useState('');
+  const matchesProduct = (p: (typeof products)[number]) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      (p.model ? p.model.toLowerCase().includes(q) : false)
+    );
+  };
   const [supplierId, setSupplierId] = useState('');
   const [requisitionDate, setRequisitionDate] = useState(new Date().toISOString().split('T')[0]);
   const [requiredByDate, setRequiredByDate] = useState(() => {
@@ -423,6 +434,14 @@ export const SupplierRequisitionModal: React.FC<Props> = ({
               </button>
             </div>
 
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search existing products by name, SKU, brand or model to filter the dropdowns…"
+              className="w-full border border-slate-300 rounded-xl p-2 text-xs font-medium text-slate-800 bg-slate-50 focus:ring-2 focus:ring-purple-500"
+            />
+
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div
@@ -491,11 +510,13 @@ export const SupplierRequisitionModal: React.FC<Props> = ({
                           onChange={(e) => handleSelectExistingProduct(index, e.target.value)}
                           className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800"
                         >
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.brand} - {p.category}) [Stock: {p.stockQty}]
-                            </option>
-                          ))}
+                          {products
+                            .filter((p) => p.id === item.productId || matchesProduct(p))
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.brand} - {p.category}) [Stock: {p.stockQty}]
+                              </option>
+                            ))}
                         </select>
                       </div>
 
