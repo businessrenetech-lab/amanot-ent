@@ -174,16 +174,11 @@ export const POSView: React.FC = () => {
           priceType: item.priceType || 'retail',
           unitPrice: item.unitPrice,
           discount: item.discount || 0,
-          includeInstallationFee:
-            item.includeInstallationFee !== undefined
-              ? item.includeInstallationFee
-              : isInstallable(fallbackProduct),
-          installationFee:
-            item.installationFee !== undefined
-              ? item.installationFee
-              : getInstallationCharge(fallbackProduct),
-          extraPipingFt: item.extraPipingFt || 0,
-          extraPipingFee: item.extraPipingFee || 0
+          // Installation fee is no longer charged on POS sales / customer invoices
+          includeInstallationFee: false,
+          installationFee: 0,
+          extraPipingFt: 0,
+          extraPipingFee: 0
         };
       });
 
@@ -325,9 +320,9 @@ export const POSView: React.FC = () => {
           priceType: globalPriceType,
           unitPrice: globalPriceType === 'retail' ? product.retailPrice : product.wholesalePrice,
           discount: 0,
-          // Only pre-checked when the product actually carries an installation charge
-          includeInstallationFee: defaultInstFee > 0,
-          installationFee: defaultInstFee,
+          // Installation fee is not charged on POS sales / customer invoices
+          includeInstallationFee: false,
+          installationFee: 0,
           extraPipingFt: 0,
           extraPipingFee: 0
         }
@@ -1046,7 +1041,7 @@ export const POSView: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Bottom Row: Price Toggle, Installation, Stepper, Line Total */}
+                    {/* Bottom Row: Price Toggle, Stepper, Line Total */}
                     <div className="flex items-center justify-between gap-1.5 text-xs pt-1 border-t border-slate-100">
                       <div className="flex items-center gap-1.5">
                         <button
@@ -1057,30 +1052,6 @@ export const POSView: React.FC = () => {
                         >
                           ৳{item.unitPrice.toLocaleString()} ({item.priceType === 'retail' ? 'R' : 'W'})
                         </button>
-
-                        {/* Installation toggle only exists for products that carry a charge */}
-                        {prodInstCharge > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => toggleItemInstallation(item.product.id, !item.includeInstallationFee)}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 border transition ${
-                              item.includeInstallationFee
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                            }`}
-                            title={`Installation Charge (৳${prodInstCharge.toLocaleString()})`}
-                          >
-                            <Wrench className="w-3 h-3" />
-                            {item.includeInstallationFee && (
-                              <span>
-                                +৳
-                                {prodInstCharge >= 1000
-                                  ? `${(prodInstCharge / 1000).toFixed(prodInstCharge % 1000 === 0 ? 0 : 1)}k`
-                                  : prodInstCharge}
-                              </span>
-                            )}
-                          </button>
-                        )}
                       </div>
 
                       <div className="flex items-center gap-2">

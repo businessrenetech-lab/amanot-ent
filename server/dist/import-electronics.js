@@ -139,6 +139,15 @@ var COLLECTIONS = [
     ]
   },
   {
+    key: "customerReturns",
+    table: "customer_returns",
+    index: [
+      { col: "invoice_id", get: (o) => str(o.invoiceId) },
+      { col: "business", get: (o) => str(o.business) },
+      { col: "customer_id", get: (o) => str(o.customerId) }
+    ]
+  },
+  {
     key: "accounts",
     table: "accounts",
     index: [
