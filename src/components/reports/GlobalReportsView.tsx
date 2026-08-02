@@ -71,6 +71,7 @@ export const GlobalReportsView: React.FC = () => {
     | 'stocks'
     | 'category_sales'
     | 'referral_sales'
+    | 'wholesale_sales'
     | 'statement'
   >('profit_loss');
 
@@ -153,6 +154,41 @@ export const GlobalReportsView: React.FC = () => {
       return true;
     });
   }, [filteredSales, salesStatusFilter, salesTypeFilter, salesSearch]);
+
+  // Wholesale-only sales for the dedicated wholesale report (respects search + status)
+  const wholesaleSalesList = useMemo(() => {
+    return filteredSales.filter((s) => {
+      if (s.saleType !== 'wholesale') return false;
+      if (salesStatusFilter !== 'all' && s.paymentStatus !== salesStatusFilter) return false;
+      if (salesSearch.trim()) {
+        const q = salesSearch.toLowerCase();
+        const matchesId = s.id.toLowerCase().includes(q);
+        const matchesCustomer = s.customerName.toLowerCase().includes(q) || s.customerPhone.includes(q);
+        const matchesItem = s.items.some((i) => i.productName.toLowerCase().includes(q) || i.brand.toLowerCase().includes(q));
+        if (!matchesId && !matchesCustomer && !matchesItem) return false;
+      }
+      return true;
+    });
+  }, [filteredSales, salesStatusFilter, salesSearch]);
+
+  // Wholesale sales rolled up per buyer (invoice count, billed, paid, outstanding)
+  const wholesaleCustomerSummary = useMemo(() => {
+    const map = new Map<
+      string,
+      { customerId: string; name: string; phone: string; invoices: number; billed: number; paid: number; due: number }
+    >();
+    wholesaleSalesList.forEach((s) => {
+      const key = s.customerId || s.customerPhone || s.customerName;
+      const row =
+        map.get(key) || { customerId: key, name: s.customerName, phone: s.customerPhone, invoices: 0, billed: 0, paid: 0, due: 0 };
+      row.invoices += 1;
+      row.billed += s.grandTotal;
+      row.paid += s.paidAmount;
+      row.due += s.dueAmount;
+      map.set(key, row);
+    });
+    return Array.from(map.values()).sort((a, b) => b.billed - a.billed);
+  }, [wholesaleSalesList]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
@@ -736,8 +772,33 @@ export const GlobalReportsView: React.FC = () => {
       RecordedBy: r.createdBy
     }));
 
+    // 9. Wholesale sales (invoices + per-buyer rollup)
+    const wholesaleInvoiceData = wholesaleSalesList.map((s) => ({
+      InvoiceNo: s.id,
+      Date: formatDate(s.createdAt),
+      Business: s.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise',
+      Customer: s.customerName,
+      Phone: s.customerPhone,
+      ItemsQty: s.items.reduce((a, i) => a + i.quantity, 0),
+      GrandTotalBDT: s.grandTotal,
+      PaidAmountBDT: s.paidAmount,
+      DueAmountBDT: s.dueAmount,
+      PaymentStatus: s.paymentStatus,
+      Staff: s.createdByStaffName
+    }));
+    const wholesaleBuyerData = wholesaleCustomerSummary.map((c) => ({
+      Buyer: c.name,
+      Phone: c.phone,
+      Invoices: c.invoices,
+      BilledBDT: c.billed,
+      PaidBDT: c.paid,
+      OutstandingBDT: c.due
+    }));
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(salesData), 'Sales_Audit_Report');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(wholesaleInvoiceData), 'Wholesale_Invoices');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(wholesaleBuyerData), 'Wholesale_By_Buyer');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(customerReturnsData), 'Customer_Returns_Log');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(categoryExportData), 'Category_Wise_Sales');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productSalesData), 'Product_Wise_Sales');
@@ -913,6 +974,31 @@ export const GlobalReportsView: React.FC = () => {
           s.paymentStatus.toUpperCase()
         ]),
         fileName: `Amanot_Sales_Audit_${todayStr}.pdf`
+      });
+    } else if (selectedReportType === 'wholesale_sales') {
+      generateBrandedReportPDF({
+        title: 'Wholesale Sales & Buyer Outstanding Report',
+        subtitle: `Wholesale Invoices: ${wholesaleSalesList.length} | Buyers: ${wholesaleCustomerSummary.length}`,
+        businessScope,
+        dateFilterText: periodText,
+        generatedBy: currentUser.name,
+        settings,
+        summaryMetrics: [
+          { label: 'Wholesale Invoices', value: `${wholesaleSalesList.length} Invoices` },
+          { label: 'Gross Wholesale Sales', value: `BDT ${wholesaleSalesList.reduce((a, s) => a + s.grandTotal, 0).toLocaleString()}` },
+          { label: 'Collected', value: `BDT ${wholesaleSalesList.reduce((a, s) => a + s.paidAmount, 0).toLocaleString()}` },
+          { label: 'Outstanding Due', value: `BDT ${wholesaleSalesList.reduce((a, s) => a + s.dueAmount, 0).toLocaleString()}` }
+        ],
+        tableHeaders: ['Wholesale Buyer', 'Phone', 'Invoices', 'Billed (BDT)', 'Paid (BDT)', 'Outstanding (BDT)'],
+        tableData: wholesaleCustomerSummary.map((c) => [
+          c.name,
+          c.phone,
+          c.invoices.toString(),
+          c.billed.toLocaleString(),
+          c.paid.toLocaleString(),
+          c.due.toLocaleString()
+        ]),
+        fileName: `Amanot_Wholesale_Sales_${todayStr}.pdf`
       });
     } else if (selectedReportType === 'product_profit') {
       generateBrandedReportPDF({
@@ -1166,7 +1252,8 @@ export const GlobalReportsView: React.FC = () => {
                 { id: 'receivables', label: '11. Receivables & Aging' },
                 { id: 'stocks', label: '12. Inventory Stock Valuation' },
                 { id: 'referral_sales', label: '13. Referral (SP Discount) Sales' },
-                { id: 'statement', label: '14. Consolidated Statement (All-in-One)' }
+                { id: 'wholesale_sales', label: '14. Wholesale Sales & Buyer Dues' },
+                { id: 'statement', label: '15. Consolidated Statement (All-in-One)' }
               ].map((mod) => (
                 <option key={mod.id} value={mod.id} className="bg-white text-slate-800 font-semibold">
                   {mod.label}
@@ -1807,6 +1894,207 @@ export const GlobalReportsView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* WHOLESALE SALES & BUYER DUES */}
+      {selectedReportType === 'wholesale_sales' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b pb-3">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-indigo-600" />
+                Wholesale Sales &amp; Buyer Outstanding
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {wholesaleSalesList.length} wholesale invoice{wholesaleSalesList.length === 1 ? '' : 's'} across{' '}
+                {wholesaleCustomerSummary.length} buyer{wholesaleCustomerSummary.length === 1 ? '' : 's'} in selected period.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search Invoice #, Buyer, Phone..."
+                  value={salesSearch}
+                  onChange={(e) => setSalesSearch(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium w-60 focus:bg-white focus:outline-none"
+                />
+              </div>
+              <select
+                value={salesStatusFilter}
+                onChange={(e) => setSalesStatusFilter(e.target.value as any)}
+                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+              >
+                <option value="all">All Payment Status</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partially Paid</option>
+                <option value="due">Unpaid / Full Due</option>
+              </select>
+            </div>
+          </div>
+
+          {/* KPI Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+            <div>
+              <span className="text-slate-500 block text-[11px]">Gross Wholesale Sales</span>
+              <span className="font-bold text-slate-900 font-mono text-sm">৳{wholesaleSalesList.reduce((sum, s) => sum + s.grandTotal, 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[11px]">Collected</span>
+              <span className="font-bold text-emerald-700 font-mono text-sm">৳{wholesaleSalesList.reduce((sum, s) => sum + s.paidAmount, 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[11px]">Outstanding Due</span>
+              <span className="font-bold text-rose-600 font-mono text-sm">৳{wholesaleSalesList.reduce((sum, s) => sum + s.dueAmount, 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[11px]">Total COGS Cost</span>
+              <span className="font-bold text-purple-700 font-mono text-sm">৳{wholesaleSalesList.reduce((sum, s) => sum + s.totalCost, 0).toLocaleString()}</span>
+            </div>
+          </div>
+
+          {wholesaleSalesList.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-xs border border-dashed border-slate-200 rounded-xl">
+              No wholesale invoices match your search or filter criteria for this period.
+            </div>
+          ) : (
+            <>
+              {/* Per-Buyer Rollup */}
+              <div>
+                <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-600" /> Wholesale Buyer Summary
+                </h3>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100 font-bold text-slate-700 border-b">
+                      <tr>
+                        <th className="p-3">Buyer</th>
+                        <th className="p-3">Phone</th>
+                        <th className="p-3 text-center">Invoices</th>
+                        <th className="p-3 text-right">Billed</th>
+                        <th className="p-3 text-right">Paid</th>
+                        <th className="p-3 text-right">Outstanding</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {wholesaleCustomerSummary.map((c) => (
+                        <tr key={c.customerId} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-slate-900">{c.name}</td>
+                          <td className="p-3 font-mono text-slate-500">{c.phone}</td>
+                          <td className="p-3 text-center font-bold">{c.invoices}</td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-900">৳{c.billed.toLocaleString()}</td>
+                          <td className="p-3 text-right font-mono text-emerald-700">৳{c.paid.toLocaleString()}</td>
+                          <td className={`p-3 text-right font-mono font-bold ${c.due > 0 ? 'text-rose-600' : 'text-slate-400'}`}>৳{c.due.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-50 border-t-2 border-slate-300 font-bold">
+                      <tr>
+                        <td className="p-3" colSpan={2}>Total</td>
+                        <td className="p-3 text-center">{wholesaleCustomerSummary.reduce((a, c) => a + c.invoices, 0)}</td>
+                        <td className="p-3 text-right font-mono text-slate-900">৳{wholesaleCustomerSummary.reduce((a, c) => a + c.billed, 0).toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono text-emerald-700">৳{wholesaleCustomerSummary.reduce((a, c) => a + c.paid, 0).toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono text-rose-600">৳{wholesaleCustomerSummary.reduce((a, c) => a + c.due, 0).toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Wholesale Invoice Detail */}
+              <div>
+                <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Receipt className="w-3.5 h-3.5 text-indigo-600" /> Wholesale Invoice Log
+                </h3>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100 font-bold text-slate-700 border-b">
+                      <tr>
+                        <th className="p-3 w-8"></th>
+                        <th className="p-3">Invoice # &amp; Date</th>
+                        <th className="p-3">Buyer</th>
+                        <th className="p-3">Branch</th>
+                        <th className="p-3 text-right">Grand Total</th>
+                        <th className="p-3 text-right">Paid</th>
+                        <th className="p-3 text-right">Due</th>
+                        <th className="p-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {wholesaleSalesList.map((s) => {
+                        const isExpanded = expandedSaleId === s.id;
+                        return (
+                          <React.Fragment key={s.id}>
+                            <tr
+                              onClick={() => setExpandedSaleId(isExpanded ? null : s.id)}
+                              className="hover:bg-slate-50 cursor-pointer transition-colors"
+                            >
+                              <td className="p-3 text-slate-400">
+                                {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600" /> : <ChevronRight className="w-4 h-4" />}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-bold font-mono text-indigo-700 block">{s.id}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{formatDate(s.createdAt)}</span>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900">{s.customerName}</div>
+                                <div className="text-[10px] text-slate-500 font-mono">{s.customerPhone}</div>
+                              </td>
+                              <td className="p-3">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                  {s.business === 'amanot_electronics' ? 'Electronics' : 'Enterprise'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right font-mono font-bold text-slate-900">৳{s.grandTotal.toLocaleString()}</td>
+                              <td className="p-3 text-right font-mono font-bold text-emerald-700">৳{s.paidAmount.toLocaleString()}</td>
+                              <td className="p-3 text-right font-mono font-bold text-rose-600">৳{s.dueAmount.toLocaleString()}</td>
+                              <td className="p-3 text-center">
+                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                  s.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800' : s.paymentStatus === 'partial' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                                }`}>
+                                  {s.paymentStatus}
+                                </span>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="bg-indigo-50/50">
+                                <td colSpan={8} className="p-4 border-t border-b border-indigo-200">
+                                  <table className="w-full text-left text-[11px] bg-white border border-slate-200 rounded-lg">
+                                    <thead className="bg-slate-100 text-slate-700 font-bold border-b">
+                                      <tr>
+                                        <th className="p-2">Item / Product Name</th>
+                                        <th className="p-2">Brand</th>
+                                        <th className="p-2 text-center">Qty</th>
+                                        <th className="p-2 text-right">Unit Price</th>
+                                        <th className="p-2 text-right">Line Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-mono">
+                                      {s.items.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50">
+                                          <td className="p-2 font-sans font-bold text-slate-900">{item.productName}</td>
+                                          <td className="p-2 font-sans text-slate-600">{item.brand}</td>
+                                          <td className="p-2 text-center font-bold">{item.quantity}</td>
+                                          <td className="p-2 text-right">৳{item.unitPrice.toLocaleString()}</td>
+                                          <td className="p-2 text-right font-bold text-slate-900">৳{item.total.toLocaleString()}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

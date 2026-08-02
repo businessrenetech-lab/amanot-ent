@@ -13,6 +13,7 @@ import {
   pushMasterList
 } from '../api/sync';
 import { findCustomerByPhone, normalizePhone } from '../utils/phone';
+import { maybePromoteVip } from '../utils/vip';
 import {
   BusinessType,
   ERPTab,
@@ -1454,11 +1455,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCustomers((prev) =>
         prev.map((c) =>
           c.id === cust!.id
-            ? {
-                ...c,
-                totalPurchases: c.totalPurchases + grandTotal,
-                currentDue: c.currentDue + dueAmount
-              }
+            ? maybePromoteVip(
+                {
+                  ...c,
+                  totalPurchases: c.totalPurchases + grandTotal,
+                  currentDue: c.currentDue + dueAmount
+                },
+                saleData.saleType
+              )
             : c
         )
       );
@@ -1678,11 +1682,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const newDue = saleData.isDraft ? 0 : dueAmount;
         const oldGrand = existing.isDraft ? 0 : existing.grandTotal;
         const newGrand = saleData.isDraft ? 0 : grandTotal;
-        return {
-          ...c,
-          currentDue: Math.max(0, c.currentDue - oldDue + newDue),
-          totalPurchases: Math.max(0, c.totalPurchases - oldGrand + newGrand)
-        };
+        return maybePromoteVip(
+          {
+            ...c,
+            currentDue: Math.max(0, c.currentDue - oldDue + newDue),
+            totalPurchases: Math.max(0, c.totalPurchases - oldGrand + newGrand)
+          },
+          updatedInvoice.saleType
+        );
       })
     );
 
