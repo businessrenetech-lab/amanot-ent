@@ -23,6 +23,7 @@ import { numberToWordsBDT } from '../../utils/numberToWords';
 import { exportCustomerInvoicePDF } from '../../utils/invoicePdfExport';
 import { AMANOT_ELECTRONICS_ADDRESS } from '../../constants/business';
 import { formatDate } from '../../utils/formatDate';
+import { capacitySuffix } from '../../utils/capacityLabel';
 import {
   KonkaLogo,
   GreeLogo,
@@ -465,7 +466,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                       <td className="p-2 border-r border-black">
                         <div className="font-extrabold text-sm text-black uppercase">
                           {item.productName}
-                          {item.capacity ? ` — ${item.capacity}` : ''}
+                          {capacitySuffix(item.productName, item.capacity) ? ` — ${capacitySuffix(item.productName, item.capacity)}` : ''}
                         </div>
                         {item.includeInstallationFee && (item.installationFee || item.extraPipingFee) ? (
                           <div className="text-[10px] font-bold text-slate-700 mt-0.5">
@@ -686,7 +687,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                       <td className="p-3 font-semibold text-slate-900">
                         <span className="text-sm font-bold">
                           {item.productName}
-                          {item.capacity ? ` — ${item.capacity}` : ''}
+                          {capacitySuffix(item.productName, item.capacity) ? ` — ${capacitySuffix(item.productName, item.capacity)}` : ''}
                         </span>
                         {item.includeInstallationFee && (item.installationFee || item.extraPipingFee) ? (
                           <div className="text-[11px] text-blue-700 font-bold mt-0.5">

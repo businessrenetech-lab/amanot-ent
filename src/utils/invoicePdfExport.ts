@@ -3,6 +3,7 @@ import { numberToWordsBDT } from './numberToWords';
 import { formatDate } from './formatDate';
 import { DEFAULT_BRAND_LOGOS } from '../data/brandLogos';
 import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
+import { capacitySuffix } from './capacityLabel';
 
 interface Settings {
   binNumber?: string;
@@ -337,7 +338,7 @@ export function exportCustomerInvoicePDF(
         <tr>
           <td class="text-center font-mono font-bold">${idx + 1}</td>
           <td>
-            <div class="font-black uppercase" style="font-size: 13px;">${item.productName}${item.capacity ? ` &mdash; ${item.capacity}` : ''}</div>
+            <div class="font-black uppercase" style="font-size: 13px;">${item.productName}${capacitySuffix(item.productName, item.capacity) ? ` &mdash; ${capacitySuffix(item.productName, item.capacity)}` : ''}</div>
             ${
               item.includeInstallationFee && (item.installationFee || item.extraPipingFee)
                 ? `<div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-top: 2px;">
