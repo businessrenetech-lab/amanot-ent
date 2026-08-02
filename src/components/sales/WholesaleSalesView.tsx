@@ -31,8 +31,23 @@ export const WholesaleSalesView: React.FC = () => {
     currentUser,
     settings,
     setActiveTab,
-    setActiveReceiptInvoice
+    setActiveReceiptInvoice,
+    setEditingSaleInvoice,
+    setPosPrefill
   } = useApp();
+
+  // Load a wholesale invoice into the POS so more products can be appended to it.
+  const continueInvoice = (inv: (typeof sales)[number]) => {
+    setEditingSaleInvoice(inv);
+    setActiveTab('pos');
+  };
+
+  // Start a fresh wholesale invoice in the POS, prefilled with this customer + wholesale prices.
+  const newWholesaleInvoice = (customerId: string) => {
+    setEditingSaleInvoice(null);
+    setPosPrefill({ customerId, priceType: 'wholesale' });
+    setActiveTab('pos');
+  };
 
   const [search, setSearch] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -254,9 +269,9 @@ export const WholesaleSalesView: React.FC = () => {
               <Wallet className="w-4 h-4" /> Record Payment
             </button>
             <button
-              onClick={() => setActiveTab('pos')}
+              onClick={() => newWholesaleInvoice(selectedCustomer.id)}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition"
-              title="Create a new wholesale invoice in the POS (choose Wholesale price)"
+              title="Open the POS prefilled with this customer at wholesale prices"
             >
               <Plus className="w-4 h-4" /> New Wholesale Invoice
             </button>
@@ -372,6 +387,13 @@ export const WholesaleSalesView: React.FC = () => {
                   <div className="flex items-center gap-4 text-xs font-mono">
                     <span className="text-slate-700">Total {bdt(inv.grandTotal)}</span>
                     <span className="text-emerald-700">Paid {bdt(inv.paidAmount)}</span>
+                    <button
+                      onClick={() => continueInvoice(inv)}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg flex items-center gap-1"
+                      title="Open in POS to add more products to this invoice"
+                    >
+                      <Plus className="w-3 h-3" /> Add Items
+                    </button>
                     <button
                       onClick={() => setActiveReceiptInvoice(inv)}
                       className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg"

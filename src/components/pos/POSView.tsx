@@ -34,7 +34,8 @@ import {
   AlertCircle,
   Wrench,
   ChevronDown,
-  Landmark
+  Landmark,
+  Layers
 } from 'lucide-react';
 
 /**
@@ -75,6 +76,8 @@ export const POSView: React.FC = () => {
     installmentPlans,
     editingSaleInvoice,
     setEditingSaleInvoice,
+    posPrefill,
+    setPosPrefill,
     setActiveReceiptInvoice,
     showToast
   } = useApp();
@@ -147,6 +150,8 @@ export const POSView: React.FC = () => {
       setCustomerPaymentNumber(editingSaleInvoice.customerPaymentNumber || '');
       setIsInstallment(!!editingSaleInvoice.isInstallment);
       setSaleNotes(editingSaleInvoice.notes || '');
+      // Keep the price mode matching the invoice so appended items price correctly
+      setGlobalPriceType(editingSaleInvoice.saleType === 'wholesale' ? 'wholesale' : 'retail');
 
       const loadedCartItems: CartItem[] = editingSaleInvoice.items.map((item) => {
         const prod = products.find((p) => p.id === item.productId);
@@ -185,6 +190,25 @@ export const POSView: React.FC = () => {
       setCart(loadedCartItems);
     }
   }, [editingSaleInvoice, products]);
+
+  // One-shot seed: open the POS prefilled with a customer + price mode
+  // (used by "New Wholesale Invoice" in the wholesale ledger).
+  useEffect(() => {
+    if (!posPrefill || editingSaleInvoice) return;
+    const cust = customers.find((c) => c.id === posPrefill.customerId);
+    if (cust) {
+      setLinkedCustomerId(cust.id);
+      setCustomerPhone(cust.phone);
+      setCustomerName(cust.name);
+      setCustomerAddress(cust.address || '');
+    }
+    setGlobalPriceType(posPrefill.priceType);
+    showToast(
+      `${posPrefill.priceType === 'wholesale' ? 'Wholesale' : 'Retail'} sale started${cust ? ` for ${cust.name}` : ''}.`
+    );
+    setPosPrefill(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posPrefill]);
 
   // Cancel Editing handler
   const handleCancelEditing = () => {
@@ -476,7 +500,12 @@ export const POSView: React.FC = () => {
 
   // Check editing permission
   const isEditingPostedSale = editingSaleInvoice && !editingSaleInvoice.isDraft;
-  const isEditingRestricted = isEditingPostedSale && currentUser.role !== 'super_admin';
+  // Wholesale invoices are continuation ledgers — staff may append items to them.
+  // Retail posted invoices still require a Super Admin to edit.
+  const isEditingRestricted =
+    isEditingPostedSale &&
+    editingSaleInvoice?.saleType !== 'wholesale' &&
+    currentUser.role !== 'super_admin';
 
   const handleCheckout = (isDraftSave: boolean = false) => {
     if (cart.length === 0) return;
@@ -544,7 +573,7 @@ export const POSView: React.FC = () => {
         downPayment: isInstallment ? downPayment : undefined,
         notes: saleNotes,
         isDraft: isDraftSave,
-        saleType: globalPriceType === 'wholesale' ? 'wholesale' : 'retail'
+        saleType: editingSaleInvoice?.saleType ?? (globalPriceType === 'wholesale' ? 'wholesale' : 'retail')
       });
       setEditingSaleInvoice(null);
     } else {
@@ -572,7 +601,7 @@ export const POSView: React.FC = () => {
         downPayment: isInstallment ? downPayment : undefined,
         notes: saleNotes,
         isDraft: isDraftSave,
-        saleType: globalPriceType === 'wholesale' ? 'wholesale' : 'retail'
+        saleType: editingSaleInvoice?.saleType ?? (globalPriceType === 'wholesale' ? 'wholesale' : 'retail')
       });
     }
 
@@ -614,6 +643,20 @@ export const POSView: React.FC = () => {
     if (linkedCustomer) return [];
     return searchCustomersByPhone(customers, customerPhone);
   }, [customers, customerPhone, linkedCustomer]);
+
+  // Latest open wholesale invoice for the entered phone — offered as "continue & add items".
+  const openWholesaleInvoice = useMemo(() => {
+    if (editingSaleInvoice) return null; // already editing something
+    const phone = customerPhone.trim();
+    if (phone.replace(/\D/g, '').length < 6) return null;
+    const matches = sales.filter(
+      (s) => !s.isDraft && s.saleType === 'wholesale' && phonesMatch(s.customerPhone, phone)
+    );
+    if (matches.length === 0) return null;
+    return matches
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0];
+  }, [customerPhone, sales, editingSaleInvoice]);
 
   const handleApplyMatchedCustomer = (c: typeof customers[0]) => {
     setLinkedCustomerId(c.id);
@@ -1131,6 +1174,21 @@ export const POSView: React.FC = () => {
                     Clear
                   </button>
                 </div>
+              )}
+
+              {openWholesaleInvoice && (
+                <button
+                  type="button"
+                  onClick={() => setEditingSaleInvoice(openWholesaleInvoice)}
+                  className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition"
+                  title="Load this wholesale invoice into the cart and append new items"
+                >
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                    Continue wholesale invoice #{openWholesaleInvoice.id}
+                  </span>
+                  <span className="font-mono shrink-0">Due ৳{openWholesaleInvoice.dueAmount.toLocaleString()}</span>
+                </button>
               )}
 
               <div className="grid grid-cols-2 gap-1.5">

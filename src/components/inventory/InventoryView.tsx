@@ -55,6 +55,7 @@ export const InventoryView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [businessFilter, setBusinessFilter] = useState<'all' | BusinessType>('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
 
   // Inventory Sub-Tab
   const [inventoryTab, setInventoryTab] = useState<
@@ -65,6 +66,7 @@ export const InventoryView: React.FC = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
   const [isBulkEntryOpen, setIsBulkEntryOpen] = useState(false);
+  const [restockPrefillProductId, setRestockPrefillProductId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
@@ -99,6 +101,9 @@ export const InventoryView: React.FC = () => {
       if (businessFilter !== 'all' && p.business !== businessFilter) return false;
       if (selectedBrand !== 'all' && p.brand.toLowerCase() !== selectedBrand.toLowerCase()) return false;
 
+      if (stockFilter === 'low' && !(p.stockQty > 0 && p.stockQty <= p.minStockAlert)) return false;
+      if (stockFilter === 'out' && p.stockQty > 0) return false;
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -110,7 +115,7 @@ export const InventoryView: React.FC = () => {
       }
       return true;
     });
-  }, [products, activeBusiness, currentUser, businessFilter, selectedBrand, searchQuery]);
+  }, [products, activeBusiness, currentUser, businessFilter, selectedBrand, stockFilter, searchQuery]);
 
   // Bulk Selection Helpers
   const isAllFilteredSelected = useMemo(() => {
@@ -316,6 +321,29 @@ export const InventoryView: React.FC = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Stock level filter */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            {([
+              { id: 'all', label: 'All Stock' },
+              { id: 'low', label: 'Low Stock' },
+              { id: 'out', label: 'Out of Stock' }
+            ] as const).map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStockFilter(s.id)}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  stockFilter === s.id
+                    ? s.id === 'all'
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'bg-rose-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
 
           {/* Business filter */}
@@ -764,7 +792,14 @@ export const InventoryView: React.FC = () => {
 
       {/* Stock Adjustment Modal */}
       {isAdjustmentModalOpen && (
-        <StockAdjustmentModal onClose={() => setIsAdjustmentModalOpen(false)} />
+        <StockAdjustmentModal
+          onClose={() => setIsAdjustmentModalOpen(false)}
+          onCreateRestock={(pid) => {
+            setIsAdjustmentModalOpen(false);
+            setRestockPrefillProductId(pid || null);
+            setIsBulkEntryOpen(true);
+          }}
+        />
       )}
 
       {/* Damage Control Modal */}
@@ -804,7 +839,11 @@ export const InventoryView: React.FC = () => {
       {isBulkEntryOpen && (
         <BulkProductEntryModal
           isOpen={isBulkEntryOpen}
-          onClose={() => setIsBulkEntryOpen(false)}
+          prefillProductId={restockPrefillProductId}
+          onClose={() => {
+            setIsBulkEntryOpen(false);
+            setRestockPrefillProductId(null);
+          }}
         />
       )}
 

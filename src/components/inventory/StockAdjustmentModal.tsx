@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, ArrowUpRight, ArrowDownRight, Sliders, ShieldAlert, Check } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownRight, Sliders, ShieldAlert, Check, Truck } from 'lucide-react';
 
 interface StockAdjustmentModalProps {
   onClose: () => void;
   preSelectedProductId?: string;
+  /** Switch to the supplier restock (stock receiving) flow for the given product. */
+  onCreateRestock?: (productId: string) => void;
 }
 
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   onClose,
-  preSelectedProductId
+  preSelectedProductId,
+  onCreateRestock
 }) => {
   const { products, activeBusiness, addStockAdjustment } = useApp();
 
@@ -144,6 +147,27 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
               Decrease Stock (-)
             </button>
           </div>
+
+          {/* Adding new stock should flow through supplier receiving, not a bare adjustment */}
+          {adjustmentType === 'increase' && onCreateRestock && (
+            <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 flex items-start gap-3">
+              <Truck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-extrabold text-teal-900 text-[11px]">Receiving new stock from a supplier?</p>
+                <p className="text-[11px] text-teal-800 mt-0.5">
+                  Record it as a <strong>Supplier Restock (Stock Receiving)</strong> so the supplier, cost price and
+                  purchase order are captured. Use a plain increase only for audit surplus / count corrections.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onCreateRestock(productId)}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] rounded-lg transition"
+                >
+                  <Truck className="w-3.5 h-3.5" /> Create Supplier Restock &amp; Receive Stock
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quantity & Expected New Quantity */}
           <div className="grid grid-cols-2 gap-3">

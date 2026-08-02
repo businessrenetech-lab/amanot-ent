@@ -87,6 +87,9 @@ interface AppContextType {
   // Editing POS Sale State
   editingSaleInvoice: SaleInvoice | null;
   setEditingSaleInvoice: (invoice: SaleInvoice | null) => void;
+  // One-shot seed to open the POS prefilled (e.g. from "New Wholesale Invoice")
+  posPrefill: { customerId: string; priceType: 'retail' | 'wholesale' } | null;
+  setPosPrefill: (seed: { customerId: string; priceType: 'retail' | 'wholesale' } | null) => void;
   loadSaleIntoPOS: (invoice: SaleInvoice) => void;
 
   // App Settings & Audit Config
@@ -341,6 +344,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentMode, setCurrentMode] = useState<'website' | 'erp'>('erp');
   const [activeTab, setActiveTab] = useState<ERPTab>('pos');
   const [editingSaleInvoice, setEditingSaleInvoice] = useState<SaleInvoice | null>(null);
+  const [posPrefill, setPosPrefill] = useState<{ customerId: string; priceType: 'retail' | 'wholesale' } | null>(null);
 
   const loadSaleIntoPOS = (invoice: SaleInvoice) => {
     // Check permission: Posted sales can only be edited by super_admin
@@ -1665,6 +1669,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAccounts((prev) => applySalePaymentToAccounts(prev, existing, updatedInvoice));
 
+    // Reconcile the customer's running balance for this edit (e.g. items appended
+    // to a wholesale invoice): swap the old figures out for the new ones.
+    setCustomers((prev) =>
+      prev.map((c) => {
+        if (c.id !== existing.customerId) return c;
+        const oldDue = existing.isDraft ? 0 : existing.dueAmount;
+        const newDue = saleData.isDraft ? 0 : dueAmount;
+        const oldGrand = existing.isDraft ? 0 : existing.grandTotal;
+        const newGrand = saleData.isDraft ? 0 : grandTotal;
+        return {
+          ...c,
+          currentDue: Math.max(0, c.currentDue - oldDue + newDue),
+          totalPurchases: Math.max(0, c.totalPurchases - oldGrand + newGrand)
+        };
+      })
+    );
+
+    // Wholesale ledger: rebuild this invoice's debit/credit so the running balance
+    // reflects the appended items and any new payment.
+    if (!saleData.isDraft && updatedInvoice.saleType === 'wholesale') {
+      const nowIso = new Date().toISOString();
+      const dateStr = updatedInvoice.createdAt;
+      const fresh: LedgerEntry[] = [
+        {
+          id: `led_${Date.now()}_inv`,
+          customerId: existing.customerId,
+          customerName: updatedInvoice.customerName,
+          business: updatedInvoice.business,
+          date: dateStr,
+          type: 'invoice',
+          referenceNo: invoiceId,
+          invoiceId,
+          description: `Wholesale sale invoice (${updatedInvoice.items.length} item${updatedInvoice.items.length === 1 ? '' : 's'})`,
+          debit: grandTotal,
+          credit: 0,
+          createdBy: currentUser.name,
+          createdAt: nowIso
+        }
+      ];
+      if (saleData.paidAmount > 0) {
+        fresh.push({
+          id: `led_${Date.now()}_pay`,
+          customerId: existing.customerId,
+          customerName: updatedInvoice.customerName,
+          business: updatedInvoice.business,
+          date: dateStr,
+          type: 'payment',
+          referenceNo: `RCPT-${invoiceId}`,
+          invoiceId,
+          description: `Payment received with invoice ${invoiceId}`,
+          debit: 0,
+          credit: saleData.paidAmount,
+          paymentMode: saleData.paymentMode,
+          accountId: targetAccount?.id,
+          accountName: targetAccount?.accountName,
+          createdBy: currentUser.name,
+          createdAt: nowIso
+        });
+      }
+      setLedgerEntries((prev) => [...fresh, ...prev.filter((e) => e.invoiceId !== invoiceId)]);
+    }
+
     if (!saleData.isDraft) {
       showToast(`Sale Invoice ${invoiceId} updated successfully.`);
       setActiveReceiptInvoice(updatedInvoice);
@@ -2662,6 +2728,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveBusiness,
         editingSaleInvoice,
         setEditingSaleInvoice,
+        posPrefill,
+        setPosPrefill,
         loadSaleIntoPOS,
         settings,
         updateSettings,

@@ -20,7 +20,8 @@ export function exportCustomerInvoicePDF(
   invoice: SaleInvoice,
   settings?: Settings,
   mode: 'bw' | 'color' = 'bw',
-  installmentPlan?: InstallmentPlan
+  installmentPlan?: InstallmentPlan,
+  wholesale?: { previousBalance: number; closingBalance: number }
 ) {
   const isElectronics = invoice.business === 'amanot_electronics';
   const brandTitle = isElectronics ? 'AMANAT ELECTRONICS' : 'AMANAT ENTERPRISE';
@@ -41,6 +42,24 @@ export function exportCustomerInvoicePDF(
   const konkaB64 = DEFAULT_BRAND_LOGOS['konka'];
 
   const takaInWords = numberToWordsBDT(invoice.grandTotal);
+
+  // Wholesale "Balance Brought Forward" block (only for wholesale invoices).
+  const wholesaleHtml = wholesale
+    ? `
+    <div style="margin-top:12px; border:2px solid #000; border-radius:4px; overflow:hidden;">
+      <div style="background:#e2e8f0; padding:5px 8px; font-weight:900; font-size:11px; text-transform:uppercase;">
+        Wholesale Account — Balance Brought Forward
+      </div>
+      <table style="width:100%; border-collapse:collapse; font-size:11px;">
+        <tbody>
+          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">Previous Balance (B/F)</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${wholesale.previousBalance.toLocaleString()}</td></tr>
+          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">This Invoice Total</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${invoice.grandTotal.toLocaleString()}</td></tr>
+          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">Payment Received</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${invoice.paidAmount.toLocaleString()}</td></tr>
+          <tr style="border-top:1px solid #000;background:#f1f5f9;"><td style="padding:4px 8px;font-weight:900;">Closing Balance (Total Due)</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:900;">৳${wholesale.closingBalance.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
+    </div>`
+    : '';
 
   // Installment / EMI schedule block (only for EMI sales).
   const scheduleHtml =
@@ -393,9 +412,10 @@ export function exportCustomerInvoicePDF(
 
   <div style="border: 1px solid #000; padding: 6px 8px; margin-top: 8px; font-size: 10px; display: flex; flex-wrap: wrap; gap: 6px 18px;">
     <span><strong>Payment Mode:</strong> ${invoice.paymentMode.replace(/_/g, ' ').toUpperCase()}</span>
-    <span><strong>Received In:</strong> ${invoice.accountName || 'Unassigned Account'}</span>
     ${invoice.customerPaymentNumber ? `<span><strong>Customer Wallet:</strong> ${invoice.customerPaymentNumber}</span>` : ''}
   </div>
+
+  ${wholesaleHtml}
 
   ${scheduleHtml}
 

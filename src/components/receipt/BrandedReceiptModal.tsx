@@ -325,7 +325,15 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             </button>
 
             <button
-              onClick={() => exportCustomerInvoicePDF(invoice, settings, viewMode, installmentPlan)}
+              onClick={() =>
+                exportCustomerInvoicePDF(
+                  invoice,
+                  settings,
+                  viewMode,
+                  installmentPlan,
+                  isWholesale ? { previousBalance, closingBalance } : undefined
+                )
+              }
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
               title="Export Vector PDF in New Tab"
             >
@@ -637,11 +645,6 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                 <p className="text-xs text-slate-700 font-bold">
                   Payment Mode: <span className="font-extrabold text-indigo-900 uppercase">{invoice.paymentMode.replace(/_/g, ' ')}</span>
                 </p>
-                {invoice.accountName && (
-                  <p className="text-xs text-slate-700 font-bold mt-1">
-                    Received In: <span className="font-extrabold text-slate-900">{invoice.accountName}</span>
-                  </p>
-                )}
                 {invoice.customerPaymentNumber && (
                   <p className="text-xs text-slate-700 font-bold mt-1">
                     Customer Wallet: <span className="font-mono font-extrabold text-slate-900">{invoice.customerPaymentNumber}</span>

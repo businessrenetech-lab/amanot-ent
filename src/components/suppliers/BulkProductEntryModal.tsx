@@ -19,12 +19,15 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   prefillRequisition?: SupplierRequisition | null;
+  /** Preselect this existing product in the first receiving row (e.g. from Stock Adjustment). */
+  prefillProductId?: string | null;
 }
 
 export const BulkProductEntryModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  prefillRequisition
+  prefillRequisition,
+  prefillProductId
 }) => {
   const {
     suppliers,
@@ -94,10 +97,10 @@ export const BulkProductEntryModal: React.FC<Props> = ({
       );
     } else {
       setSelectedReqId('');
-      setBusiness('amanot_electronics');
       setNotes('Bulk product entry stock shipment');
-      if (products.length > 0) {
-        const firstP = products[0];
+      const firstP = (prefillProductId && products.find((p) => p.id === prefillProductId)) || products[0];
+      if (firstP) {
+        setBusiness(firstP.business);
         setItems([
           {
             isNewProduct: false,
@@ -114,9 +117,11 @@ export const BulkProductEntryModal: React.FC<Props> = ({
             totalCost: firstP.costPrice * 10
           }
         ]);
+      } else {
+        setBusiness('amanot_electronics');
       }
     }
-  }, [prefillRequisition, products]);
+  }, [prefillRequisition, prefillProductId, products]);
 
   if (!isOpen) return null;
 
