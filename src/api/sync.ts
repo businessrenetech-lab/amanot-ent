@@ -76,6 +76,7 @@ export interface ServerState {
   stockAdjustments?: any[];
   damageLogs?: any[];
   supplierReturns?: any[];
+  ledgerEntries?: any[];
   customerReturns?: any[];
   settings?: any;
   auditConfig?: any;

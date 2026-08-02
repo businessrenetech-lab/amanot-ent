@@ -166,6 +166,32 @@ export interface SaleInvoice {
   accountId?: string;
   accountName?: string;
   customerPaymentNumber?: string;
+  saleType?: 'retail' | 'wholesale'; // Wholesale sales post to the customer AR ledger
+}
+
+/**
+ * Customer accounts-receivable ledger entry (wholesale "Balance Brought Forward" system).
+ * debit  = increases what the customer owes us (a wholesale invoice, an opening balance).
+ * credit = decreases what the customer owes us (a payment received, a return refund).
+ * The running balance is computed by ordering entries chronologically.
+ */
+export interface LedgerEntry {
+  id: string;
+  customerId: string;
+  customerName: string;
+  business: BusinessType;
+  date: string;
+  type: 'opening' | 'invoice' | 'payment' | 'return' | 'adjustment';
+  referenceNo: string; // invoice id, payment voucher, etc.
+  invoiceId?: string;
+  description?: string;
+  debit: number;
+  credit: number;
+  paymentMode?: PaymentMode;
+  accountId?: string;
+  accountName?: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface InstallmentPlan {

@@ -40,7 +40,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   invoice: propInvoice,
   onClose: propOnClose
 }) => {
-  const { settings, activeReceiptInvoice, setActiveReceiptInvoice, installmentPlans } = useApp();
+  const { settings, activeReceiptInvoice, setActiveReceiptInvoice, installmentPlans, customers } = useApp();
 
   const invoice = propInvoice || activeReceiptInvoice;
   const onClose = propOnClose || (() => setActiveReceiptInvoice(null));
@@ -60,6 +60,51 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
           (p) => p.id === invoice.installmentPlanId || p.invoiceId === invoice.id
         )
       : undefined;
+
+  // Wholesale "Balance Brought Forward" summary (previous due → this invoice → closing)
+  const isWholesale = invoice.saleType === 'wholesale';
+  const wholesaleCustomer = isWholesale ? customers.find((c) => c.id === invoice.customerId) : undefined;
+  const closingBalance = wholesaleCustomer ? Math.max(0, Math.round(wholesaleCustomer.currentDue || 0)) : invoice.dueAmount;
+  const previousBalance = Math.max(0, Math.round(closingBalance - (invoice.dueAmount || 0)));
+
+  const renderWholesaleSummary = (variant: 'bw' | 'color') => {
+    if (!isWholesale) return null;
+    const bw = variant === 'bw';
+    const b = bw ? '#000000' : '#e2e8f0';
+    const rows = [
+      { k: 'Previous Balance (B/F)', v: previousBalance },
+      { k: 'This Invoice Total', v: invoice.grandTotal },
+      { k: 'Payment Received', v: invoice.paidAmount },
+      { k: 'Closing Balance (Total Due)', v: closingBalance, strong: true }
+    ];
+    return (
+      <div className="mb-6" style={{ pageBreakInside: 'avoid' }}>
+        <div className="rounded overflow-hidden" style={{ border: `2px solid ${b}` }}>
+          <div
+            className="px-3 py-1.5 font-black text-xs uppercase tracking-wide"
+            style={{ backgroundColor: bw ? '#e2e8f0' : '#0f172a', color: bw ? '#000000' : '#ffffff' }}
+          >
+            Wholesale Account — Balance Brought Forward
+          </div>
+          <table className="w-full text-xs" style={{ color: '#000000' }}>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.k} style={{ borderTop: `1px solid ${b}` }}>
+                  <td className={`px-3 py-1 ${r.strong ? 'font-black' : 'font-semibold'}`}>{r.k}</td>
+                  <td
+                    className={`px-3 py-1 text-right font-mono ${r.strong ? 'font-black text-sm' : 'font-bold'}`}
+                    style={{ borderLeft: `1px solid ${b}` }}
+                  >
+                    ৳{r.v.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   // Renders the EMI schedule (list of installments + due dates) for both receipt styles.
   const renderInstallmentSchedule = (variant: 'bw' | 'color') => {
@@ -412,13 +457,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                       <td className="p-2 border-r border-black">
                         <div className="font-extrabold text-sm text-black uppercase">
                           {item.productName}
-                        </div>
-                        <div className="text-[10px] font-semibold text-slate-700 space-x-1.5 leading-tight">
-                          <span>Brand: {item.brand}</span>
-                          {item.typeSeries && <span>| Type: {item.typeSeries}</span>}
-                          {item.acType && <span>| {item.acType}</span>}
-                          {item.size && <span>| Size: {item.size}</span>}
-                          {item.capacity && <span>| Cap: <strong>{item.capacity}</strong></span>}
+                          {item.capacity ? ` — ${item.capacity}` : ''}
                         </div>
                         {item.includeInstallationFee && (item.installationFee || item.extraPipingFee) ? (
                           <div className="text-[10px] font-bold text-slate-700 mt-0.5">
@@ -503,13 +542,15 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             </div>
 
             {/* Installment / EMI Schedule (only for EMI sales) */}
+            {renderWholesaleSummary('bw')}
+
             {renderInstallmentSchedule('bw')}
 
             {/* Authorised & Customer Signatures */}
             <div className="pt-10 flex justify-between items-end text-xs font-bold text-black mb-8">
               <div className="text-center">
                 <div className="border-b-2 border-black w-44 mb-1"></div>
-                <p className="uppercase">Customer's Sing</p>
+                <p className="uppercase">Customer's Signature</p>
               </div>
 
               <div className="text-center">
@@ -517,7 +558,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   Served by: {invoice.createdByStaffName || 'Authorized Staff'}
                 </p>
                 <div className="border-b-2 border-black w-48 mb-1"></div>
-                <p className="uppercase font-black">Authorised Sing</p>
+                <p className="uppercase font-black">Authorised Signature</p>
                 <p className="text-[10px] text-slate-700">{brandTitle}</p>
               </div>
             </div>
@@ -640,15 +681,10 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                     <tr key={idx} style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
                       <td className="p-3 text-slate-400 font-mono text-xs">{idx + 1}</td>
                       <td className="p-3 font-semibold text-slate-900">
-                        <span className="text-sm font-bold">{item.productName}</span>
-                        {(item.typeSeries || item.acType || item.capacity || item.size) && (
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5 space-x-1 leading-tight">
-                            {item.typeSeries && <span>Type: <strong>{item.typeSeries}</strong></span>}
-                            {item.acType && <span>• {item.acType}</span>}
-                            {item.size && <span>• Size: <strong>{item.size}</strong></span>}
-                            {item.capacity && <span>• Cap: <strong>{item.capacity}</strong></span>}
-                          </div>
-                        )}
+                        <span className="text-sm font-bold">
+                          {item.productName}
+                          {item.capacity ? ` — ${item.capacity}` : ''}
+                        </span>
                         {item.includeInstallationFee && (item.installationFee || item.extraPipingFee) ? (
                           <div className="text-[11px] text-blue-700 font-bold mt-0.5">
                             + Installation Fee: ৳{(item.installationFee || 0).toLocaleString()}
@@ -714,6 +750,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             </div>
 
             {/* Installment / EMI Schedule (only for EMI sales) */}
+            <div className="mt-6">{renderWholesaleSummary('color')}</div>
             <div className="mt-6">{renderInstallmentSchedule('color')}</div>
 
             {/* Signatures */}

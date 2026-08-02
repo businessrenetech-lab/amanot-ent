@@ -543,7 +543,8 @@ export const POSView: React.FC = () => {
         installmentMonths: isInstallment ? installmentMonths : undefined,
         downPayment: isInstallment ? downPayment : undefined,
         notes: saleNotes,
-        isDraft: isDraftSave
+        isDraft: isDraftSave,
+        saleType: globalPriceType === 'wholesale' ? 'wholesale' : 'retail'
       });
       setEditingSaleInvoice(null);
     } else {
@@ -570,7 +571,8 @@ export const POSView: React.FC = () => {
         installmentMonths: isInstallment ? installmentMonths : undefined,
         downPayment: isInstallment ? downPayment : undefined,
         notes: saleNotes,
-        isDraft: isDraftSave
+        isDraft: isDraftSave,
+        saleType: globalPriceType === 'wholesale' ? 'wholesale' : 'retail'
       });
     }
 

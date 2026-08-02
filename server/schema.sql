@@ -201,6 +201,18 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
   INDEX idx_suppay_supplier (supplier_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id          VARCHAR(64) PRIMARY KEY,
+  customer_id VARCHAR(64),
+  business    VARCHAR(32),
+  type        VARCHAR(16),
+  entry_date  VARCHAR(40),
+  data        JSON NOT NULL,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_ledger_customer (customer_id),
+  INDEX idx_ledger_business (business)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Singletons + master lists: settings, auditConfig, brands, categories, etc.
 -- `data` holds either a JSON object (settings/auditConfig) or a JSON array
 -- (master lists like brands / categories).

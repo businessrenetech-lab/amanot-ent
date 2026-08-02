@@ -202,6 +202,16 @@ var COLLECTIONS = [
       { col: "business", get: (o) => str(o.business) },
       { col: "supplier_id", get: (o) => str(o.supplierId) }
     ]
+  },
+  {
+    key: "ledgerEntries",
+    table: "ledger_entries",
+    index: [
+      { col: "customer_id", get: (o) => str(o.customerId) },
+      { col: "business", get: (o) => str(o.business) },
+      { col: "type", get: (o) => str(o.type) },
+      { col: "entry_date", get: (o) => str(o.date) }
+    ]
   }
 ];
 var COLLECTION_BY_KEY = Object.fromEntries(

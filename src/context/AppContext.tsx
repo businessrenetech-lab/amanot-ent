@@ -37,6 +37,7 @@ import {
   Account,
   AccountTransfer,
   SupplierPayment,
+  LedgerEntry,
   PaymentMode
 } from '../types';
 import {
@@ -303,6 +304,21 @@ interface AppContextType {
   updateSupplierPayment: (id: string, updatedFields: Partial<SupplierPayment>) => void;
   deleteSupplierPayment: (id: string) => void;
 
+  // Wholesale customer ledger (Balance Brought Forward system)
+  ledgerEntries: LedgerEntry[];
+  addLedgerEntry: (entry: Omit<LedgerEntry, 'id' | 'createdAt' | 'createdBy'>) => void;
+  deleteLedgerEntry: (id: string) => void;
+  recordCustomerPayment: (payload: {
+    customerId: string;
+    amount: number;
+    date: string;
+    paymentMode: PaymentMode;
+    accountId?: string;
+    referenceNo?: string;
+    notes?: string;
+    business?: BusinessType;
+  }) => void;
+
   smsLogs: SMSLog[];
   sendSMS: (phone: string, name: string, message: string, type: SMSLog['type'], business: BusinessType) => void;
 
@@ -557,6 +573,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('amanot_supplier_payments');
     return saved ? JSON.parse(saved) : INITIAL_SUPPLIER_PAYMENTS;
   });
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
+    const saved = localStorage.getItem('amanot_ledger_entries');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     localStorage.setItem('amanot_accounts', JSON.stringify(accounts));
@@ -569,6 +589,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('amanot_supplier_payments', JSON.stringify(supplierPayments));
   }, [supplierPayments]);
+
+  useEffect(() => {
+    localStorage.setItem('amanot_ledger_entries', JSON.stringify(ledgerEntries));
+  }, [ledgerEntries]);
 
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>(() => {
     const saved = localStorage.getItem('amanot_sms_logs');
@@ -628,6 +652,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (state.accounts) setAccounts(ensureBusinessCashAccounts(state.accounts));
     if (state.accountTransfers) setAccountTransfers(state.accountTransfers);
     if (state.supplierPayments) setSupplierPayments(state.supplierPayments);
+    if (state.ledgerEntries) setLedgerEntries(state.ledgerEntries);
     if (state.smsLogs) setSmsLogs(state.smsLogs);
     if (state.stockAdjustments) setStockAdjustments(state.stockAdjustments);
     if (state.damageLogs) setDamageLogs(state.damageLogs);
@@ -726,6 +751,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { if (hydratedRef.current && authRef.current) pushCollection('accounts', accounts); }, [accounts]);
   useEffect(() => { if (hydratedRef.current && authRef.current) pushCollection('accountTransfers', accountTransfers); }, [accountTransfers]);
   useEffect(() => { if (hydratedRef.current && authRef.current) pushCollection('supplierPayments', supplierPayments); }, [supplierPayments]);
+  useEffect(() => { if (hydratedRef.current && authRef.current) pushCollection('ledgerEntries', ledgerEntries); }, [ledgerEntries]);
   useEffect(() => { if (hydratedRef.current && authRef.current) pushSingleton('settings', settings); }, [settings]);
   useEffect(() => { if (hydratedRef.current && authRef.current) pushSingleton('auditConfig', auditConfig); }, [auditConfig]);
   useEffect(() => { if (hydratedRef.current && authRef.current) pushMasterList('brands', brands); }, [brands]);
@@ -1258,6 +1284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     downPayment?: number;
     notes?: string;
     isDraft?: boolean;
+    saleType?: 'retail' | 'wholesale';
   }): SaleInvoice => {
     // 1. Ensure Customer exists in CRM database (match by id, then by phone, else create)
     let cust = customers.find((c) => c.id === saleData.customerId)
@@ -1408,7 +1435,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isDraft: saleData.isDraft,
       accountId: targetAccount?.id,
       accountName: targetAccount?.accountName,
-      customerPaymentNumber: saleData.customerPaymentNumber
+      customerPaymentNumber: saleData.customerPaymentNumber,
+      saleType: saleData.saleType || 'retail'
     };
 
     setSales((prev) => [newInvoice, ...prev]);
@@ -1430,6 +1458,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : c
         )
       );
+
+      // Wholesale sales post to the customer AR ledger (Balance Brought Forward).
+      if (saleData.saleType === 'wholesale') {
+        const nowIso = new Date().toISOString();
+        const dateStr = newInvoice.createdAt;
+        const entries: LedgerEntry[] = [
+          {
+            id: `led_${Date.now()}_inv`,
+            customerId: cust!.id,
+            customerName: cust!.name,
+            business: saleData.business,
+            date: dateStr,
+            type: 'invoice',
+            referenceNo: invoiceNum,
+            invoiceId: invoiceNum,
+            description: `Wholesale sale invoice (${snapshotItems.length} item${snapshotItems.length === 1 ? '' : 's'})`,
+            debit: grandTotal,
+            credit: 0,
+            createdBy: currentUser.name,
+            createdAt: nowIso
+          }
+        ];
+        if (saleData.paidAmount > 0) {
+          entries.push({
+            id: `led_${Date.now()}_pay`,
+            customerId: cust!.id,
+            customerName: cust!.name,
+            business: saleData.business,
+            date: dateStr,
+            type: 'payment',
+            referenceNo: `RCPT-${invoiceNum}`,
+            invoiceId: invoiceNum,
+            description: `Payment received with invoice ${invoiceNum}`,
+            debit: 0,
+            credit: saleData.paidAmount,
+            paymentMode: saleData.paymentMode,
+            accountId: targetAccount?.id,
+            accountName: targetAccount?.accountName,
+            createdBy: currentUser.name,
+            createdAt: nowIso
+          });
+        }
+        setLedgerEntries((prev) => [...entries, ...prev]);
+      }
 
       // Auto send SMS confirmation
       const bName = saleData.business === 'amanot_electronics' ? 'Amanot Electronics' : 'Amanot Enterprise';
@@ -1480,6 +1552,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       downPayment?: number;
       notes?: string;
       isDraft?: boolean;
+      saleType?: 'retail' | 'wholesale';
     }
   ): SaleInvoice => {
     const existing = sales.find((s) => s.id === invoiceId);
@@ -1584,7 +1657,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isDraft: saleData.isDraft,
       accountId: targetAccount?.id,
       accountName: targetAccount?.accountName,
-      customerPaymentNumber: saleData.customerPaymentNumber
+      customerPaymentNumber: saleData.customerPaymentNumber,
+      saleType: saleData.saleType ?? existing.saleType
     };
 
     setSales((prev) => prev.map((s) => (s.id === invoiceId ? updatedInvoice : s)));
@@ -2485,6 +2559,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Supplier payment record deleted and balances restored.');
   };
 
+  // ===========================================================================
+  // Wholesale customer AR ledger
+  // ===========================================================================
+  const addLedgerEntry = (entry: Omit<LedgerEntry, 'id' | 'createdAt' | 'createdBy'>) => {
+    const newEntry: LedgerEntry = {
+      ...entry,
+      id: `led_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      createdBy: currentUser.name,
+      createdAt: new Date().toISOString()
+    };
+    setLedgerEntries((prev) => [newEntry, ...prev]);
+  };
+
+  const deleteLedgerEntry = (id: string) => {
+    const existing = ledgerEntries.find((e) => e.id === id);
+    if (!existing) return;
+    // Reverse the balance impact on the customer + account (payments only touch accounts)
+    const balanceDelta = existing.debit - existing.credit; // amount it added to customer due
+    setCustomers((prev) =>
+      prev.map((c) =>
+        c.id === existing.customerId ? { ...c, currentDue: Math.max(0, c.currentDue - balanceDelta) } : c
+      )
+    );
+    if (existing.type === 'payment' && existing.accountId && existing.credit > 0) {
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === existing.accountId ? { ...a, currentBalance: a.currentBalance - existing.credit } : a))
+      );
+    }
+    setLedgerEntries((prev) => prev.filter((e) => e.id !== id));
+    showToast('Ledger entry removed and balances adjusted.');
+  };
+
+  // Standalone payment against a customer's outstanding balance (no sales invoice).
+  const recordCustomerPayment = (payload: {
+    customerId: string;
+    amount: number;
+    date: string;
+    paymentMode: PaymentMode;
+    accountId?: string;
+    referenceNo?: string;
+    notes?: string;
+    business?: BusinessType;
+  }) => {
+    if (payload.amount <= 0) return;
+    const cust = customers.find((c) => c.id === payload.customerId);
+    if (!cust) {
+      showToast('Customer not found for payment.');
+      return;
+    }
+    const business = payload.business || 'amanot_electronics';
+    const acc = payload.accountId ? accounts.find((a) => a.id === payload.accountId) : undefined;
+    const ref = payload.referenceNo || `RCPT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const entry: LedgerEntry = {
+      id: `led_${Date.now()}_pay`,
+      customerId: cust.id,
+      customerName: cust.name,
+      business,
+      date: payload.date,
+      type: 'payment',
+      referenceNo: ref,
+      description: payload.notes || 'Payment received against outstanding balance',
+      debit: 0,
+      credit: payload.amount,
+      paymentMode: payload.paymentMode,
+      accountId: acc?.id,
+      accountName: acc?.accountName,
+      createdBy: currentUser.name,
+      createdAt: new Date().toISOString()
+    };
+    setLedgerEntries((prev) => [entry, ...prev]);
+
+    // Reduce customer due and credit the receiving account
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === cust.id ? { ...c, currentDue: Math.max(0, c.currentDue - payload.amount) } : c))
+    );
+    if (acc) {
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === acc.id ? { ...a, currentBalance: a.currentBalance + payload.amount } : a))
+      );
+    }
+    showToast(`Payment of ৳${payload.amount.toLocaleString()} recorded for ${cust.name} (Ref ${ref}).`);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2579,6 +2737,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addSupplierPayment,
         updateSupplierPayment,
         deleteSupplierPayment,
+        ledgerEntries,
+        addLedgerEntry,
+        deleteLedgerEntry,
+        recordCustomerPayment,
         smsLogs,
         sendSMS,
         activeReceiptInvoice,

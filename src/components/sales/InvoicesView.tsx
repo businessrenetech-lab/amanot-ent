@@ -24,10 +24,13 @@ import {
   Trash2
 } from 'lucide-react';
 import { CustomerReturnModal } from './CustomerReturnModal';
+import { WholesaleSalesView } from './WholesaleSalesView';
+import { Store, Layers } from 'lucide-react';
 
 export const InvoicesView: React.FC = () => {
   const { sales, customerReturns, setActiveReceiptInvoice, sendSMS, payInvoiceDue, deleteSale, accounts, activeBusiness, currentUser, settings, loadSaleIntoPOS } = useApp();
 
+  const [salesModule, setSalesModule] = useState<'retail' | 'wholesale'>('retail');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid' | 'partial'>('all');
   const [businessFilter, setBusinessFilter] = useState<'all' | BusinessType>('all');
@@ -90,6 +93,7 @@ export const InvoicesView: React.FC = () => {
   const filteredSales = useMemo(() => {
     return inScope.filter((s) => {
       if (s.isDraft) return false;
+      if (s.saleType === 'wholesale') return false; // wholesale lives in its own module
 
       if (businessFilter !== 'all' && s.business !== businessFilter) return false;
       if (statusFilter !== 'all' && s.paymentStatus !== statusFilter) return false;
@@ -135,29 +139,59 @@ export const InvoicesView: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header + Retail / Wholesale module switch */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-600" />
             Invoices & Sales Records
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Track customer invoices, due balances, process sales returns, send SMS reminders, and re-print branded receipts.
+            {salesModule === 'wholesale'
+              ? 'Wholesale customer ledger — outstanding balances, brought-forward dues, payments & printable statements.'
+              : 'Retail customer invoices, due balances, sales returns, SMS reminders, and branded receipts.'}
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setSelectedInvoiceForReturn(undefined);
-            setIsCustomerReturnOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition active:scale-98"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Process Customer Sales Return
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold shrink-0">
+            <button
+              onClick={() => setSalesModule('retail')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                salesModule === 'retail' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Store className="w-3.5 h-3.5" /> Retail Sales
+            </button>
+            <button
+              onClick={() => setSalesModule('wholesale')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                salesModule === 'wholesale' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" /> Wholesale Sales
+            </button>
+          </div>
+
+          {salesModule === 'retail' && (
+            <button
+              onClick={() => {
+                setSelectedInvoiceForReturn(undefined);
+                setIsCustomerReturnOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition active:scale-98"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Process Customer Sales Return
+            </button>
+          )}
+        </div>
       </div>
+
+      {salesModule === 'wholesale' && <WholesaleSalesView />}
+
+      {salesModule === 'retail' && (
+      <>
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -668,6 +702,8 @@ export const InvoicesView: React.FC = () => {
             </table>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* Customer Return Modal */}

@@ -318,14 +318,7 @@ export function exportCustomerInvoicePDF(
         <tr>
           <td class="text-center font-mono font-bold">${idx + 1}</td>
           <td>
-            <div class="font-black uppercase" style="font-size: 13px;">${item.productName}</div>
-            <div style="font-size: 10px; color: #334155; margin-top: 2px;">
-              Brand: ${item.brand}
-              ${item.typeSeries ? ` | Type: ${item.typeSeries}` : ''}
-              ${item.acType ? ` | ${item.acType}` : ''}
-              ${item.size ? ` | Size: ${item.size}` : ''}
-              ${item.capacity ? ` | Cap: <strong>${item.capacity}</strong>` : ''}
-            </div>
+            <div class="font-black uppercase" style="font-size: 13px;">${item.productName}${item.capacity ? ` &mdash; ${item.capacity}` : ''}</div>
             ${
               item.includeInstallationFee && (item.installationFee || item.extraPipingFee)
                 ? `<div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-top: 2px;">
@@ -408,11 +401,11 @@ export function exportCustomerInvoicePDF(
 
   <div class="signatures">
     <div style="text-align: center;">
-      <div class="sig-line">Customer's Sing</div>
+      <div class="sig-line">Customer's Signature</div>
     </div>
     <div style="text-align: center;">
       <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">Served by: ${invoice.createdByStaffName || 'Authorized Staff'}</div>
-      <div class="sig-line">Authorised Sing</div>
+      <div class="sig-line">Authorised Signature</div>
       <div style="font-size: 10px; font-weight: 800;">${brandTitle}</div>
     </div>
   </div>
