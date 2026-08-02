@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, ArrowUpRight, ArrowDownRight, Sliders, ShieldAlert, Check, Truck } from 'lucide-react';
+import { X, Sliders, Check, Truck, Plus, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface StockAdjustmentModalProps {
   onClose: () => void;
@@ -9,22 +9,48 @@ interface StockAdjustmentModalProps {
   onCreateRestock?: (productId: string) => void;
 }
 
+const REASONS = [
+  'Physical Audit Count Variance',
+  'Found Uncounted Stock in Warehouse',
+  'Physical Damage / Loss Correction',
+  'Barcode Re-tagging Reclassification',
+  'Initial Opening Stock Correction'
+];
+
+interface AdjRow {
+  id: string;
+  productId: string;
+  adjustmentType: 'increase' | 'decrease';
+  quantity: number;
+  reason: string;
+}
+
+const rid = () => `row_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
 export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
   onClose,
   preSelectedProductId,
   onCreateRestock
 }) => {
-  const { products, activeBusiness, addStockAdjustment } = useApp();
+  const { products, activeBusiness, addStockAdjustment, showToast } = useApp();
 
   const availableProducts = products.filter(
     (p) => activeBusiness === 'all' || p.business === activeBusiness
   );
 
-  const [productId, setProductId] = useState<string>(
-    preSelectedProductId || (availableProducts[0]?.id ?? '')
-  );
   const [productSearch, setProductSearch] = useState('');
-  const pickList = availableProducts.filter((p) => {
+  const [notes, setNotes] = useState('');
+  const [rows, setRows] = useState<AdjRow[]>([
+    {
+      id: rid(),
+      productId: preSelectedProductId || availableProducts[0]?.id || '',
+      adjustmentType: 'increase',
+      quantity: 1,
+      reason: REASONS[0]
+    }
+  ]);
+
+  const matchesProduct = (p: (typeof availableProducts)[number]) => {
     const q = productSearch.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -33,227 +59,248 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({
       p.brand.toLowerCase().includes(q) ||
       (p.model ? p.model.toLowerCase().includes(q) : false)
     );
-  });
-  const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [reason, setReason] = useState<string>('Physical Audit Count Variance');
-  const [customReason, setCustomReason] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
+  };
 
-  const selectedProduct = availableProducts.find((p) => p.id === productId);
+  const updateRow = (id: string, patch: Partial<AdjRow>) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const addRow = () =>
+    setRows((prev) => [
+      ...prev,
+      {
+        id: rid(),
+        productId: availableProducts[0]?.id || '',
+        adjustmentType: 'increase',
+        quantity: 1,
+        reason: REASONS[0]
+      }
+    ]);
+
+  const removeRow = (id: string) => setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+
+  const prodById = (id: string) => availableProducts.find((p) => p.id === id);
+
+  const validRows = rows.filter((r) => r.productId && r.quantity > 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProduct) return;
-    if (quantity <= 0) return;
-
-    const finalReason = reason === 'OTHER_CUSTOM' ? (customReason.trim() || 'Manual Adjustment') : reason;
-
-    addStockAdjustment({
-      business: selectedProduct.business,
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      sku: selectedProduct.sku,
-      brand: selectedProduct.brand,
-      category: selectedProduct.category,
-      adjustmentType,
-      quantity,
-      reason: finalReason,
-      notes: notes.trim() ? notes : undefined
+    if (validRows.length === 0) {
+      showToast('Add at least one product with a quantity to adjust.');
+      return;
+    }
+    validRows.forEach((r) => {
+      const p = prodById(r.productId);
+      if (!p) return;
+      addStockAdjustment({
+        business: p.business,
+        productId: p.id,
+        productName: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        category: p.category,
+        adjustmentType: r.adjustmentType,
+        quantity: r.quantity,
+        reason: r.reason,
+        notes: notes.trim() ? notes : undefined
+      });
     });
-
+    showToast(`Applied ${validRows.length} stock adjustment${validRows.length === 1 ? '' : 's'}.`);
     onClose();
   };
 
+  const firstIncreaseProductId = rows.find((r) => r.adjustmentType === 'increase' && r.productId)?.productId || rows[0]?.productId || '';
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 px-6 py-4 flex items-center justify-between text-white">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 px-6 py-4 flex items-center justify-between text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 font-bold">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Adjust Stock Quantity</h2>
-              <p className="text-xs text-slate-300">Audit variance or manual inventory correction</p>
+              <h2 className="text-base font-bold text-white">Bulk Stock Adjustment</h2>
+              <p className="text-xs text-slate-300">Increase / decrease several products in one go (audit variance & corrections)</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg transition hover:bg-slate-800"
-          >
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-lg transition hover:bg-slate-800">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs font-medium text-slate-700">
-          {/* Product Select */}
-          <div>
-            <label className="text-slate-600 font-bold block mb-1">Select Product *</label>
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+          <div className="p-5 space-y-3 overflow-y-auto text-xs font-medium text-slate-700">
+            {/* Supplier restock hint */}
+            {onCreateRestock && (
+              <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 flex items-start gap-3">
+                <Truck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-extrabold text-teal-900 text-[11px]">Receiving new stock from a supplier?</p>
+                  <p className="text-[11px] text-teal-800 mt-0.5">
+                    Record it as a <strong>Supplier Restock (Stock Receiving)</strong> so the supplier, cost price and
+                    purchase order are captured. Use bulk adjustment only for audit surplus / count corrections.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onCreateRestock(firstIncreaseProductId)}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] rounded-lg transition"
+                  >
+                    <Truck className="w-3.5 h-3.5" /> Create Supplier Restock &amp; Receive Stock
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Shared product search */}
             <input
               type="text"
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              placeholder="Search product by name, SKU, brand or model…"
-              className="w-full mb-1.5 border border-slate-300 rounded-xl p-2 text-xs font-medium text-slate-800 bg-slate-50 focus:ring-2 focus:ring-blue-500"
+              placeholder="Search products by name, SKU, brand or model to filter the row dropdowns…"
+              className="w-full border border-slate-300 rounded-xl p-2 text-xs font-medium text-slate-800 bg-slate-50 focus:ring-2 focus:ring-blue-500"
             />
-            <select
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              size={productSearch.trim() ? Math.min(6, pickList.length || 1) : undefined}
-              className="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500"
-            >
-              {pickList.length === 0 && <option value="">No matching products</option>}
-              {pickList.map((p) => (
-                <option key={p.id} value={p.id}>
-                  [{p.brand}] {p.name} (Stock: {p.stockQty} {p.unit})
-                </option>
-              ))}
-            </select>
-            {selectedProduct && (
-              <div className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-slate-600">
-                <span>SKU: <strong className="text-slate-900 font-mono">{selectedProduct.sku}</strong></span>
-                <span>Current Stock: <strong className="text-blue-700 text-sm font-extrabold">{selectedProduct.stockQty} {selectedProduct.unit}</strong></span>
+
+            {/* Rows */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="hidden md:grid grid-cols-[1.5rem_1fr_7rem_5rem_1fr_5.5rem_2rem] gap-2 bg-slate-100 px-3 py-2 text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">
+                <span>#</span>
+                <span>Product</span>
+                <span>Direction</span>
+                <span>Qty</span>
+                <span>Reason</span>
+                <span className="text-right">New Stock</span>
+                <span></span>
               </div>
-            )}
-          </div>
+              <div className="divide-y divide-slate-100">
+                {rows.map((r, idx) => {
+                  const p = prodById(r.productId);
+                  const options = availableProducts.filter((x) => x.id === r.productId || matchesProduct(x));
+                  const newStock = p ? Math.max(0, p.stockQty + (r.adjustmentType === 'increase' ? r.quantity : -r.quantity)) : 0;
+                  return (
+                    <div
+                      key={r.id}
+                      className="grid grid-cols-1 md:grid-cols-[1.5rem_1fr_7rem_5rem_1fr_5.5rem_2rem] gap-2 px-3 py-2 items-center"
+                    >
+                      <span className="hidden md:block font-mono font-bold text-slate-400">{idx + 1}</span>
 
-          {/* Direction Toggle */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setAdjustmentType('increase')}
-              className={`p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition ${
-                adjustmentType === 'increase'
-                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/30'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <ArrowUpRight className="w-4 h-4 text-emerald-600" />
-              Increase Stock (+)
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdjustmentType('decrease')}
-              className={`p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition ${
-                adjustmentType === 'decrease'
-                  ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-500/30'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <ArrowDownRight className="w-4 h-4 text-rose-600" />
-              Decrease Stock (-)
-            </button>
-          </div>
+                      <select
+                        value={r.productId}
+                        onChange={(e) => updateRow(r.id, { productId: e.target.value })}
+                        className="w-full border border-slate-300 rounded-lg p-1.5 text-xs font-bold bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 min-w-0"
+                      >
+                        {options.length === 0 && <option value="">No matching products</option>}
+                        {options.map((op) => (
+                          <option key={op.id} value={op.id}>
+                            [{op.brand}] {op.name} (Stock {op.stockQty})
+                          </option>
+                        ))}
+                      </select>
 
-          {/* Adding new stock should flow through supplier receiving, not a bare adjustment */}
-          {adjustmentType === 'increase' && onCreateRestock && (
-            <div className="p-3 rounded-xl bg-teal-50 border border-teal-200 flex items-start gap-3">
-              <Truck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-extrabold text-teal-900 text-[11px]">Receiving new stock from a supplier?</p>
-                <p className="text-[11px] text-teal-800 mt-0.5">
-                  Record it as a <strong>Supplier Restock (Stock Receiving)</strong> so the supplier, cost price and
-                  purchase order are captured. Use a plain increase only for audit surplus / count corrections.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onCreateRestock(productId)}
-                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] rounded-lg transition"
-                >
-                  <Truck className="w-3.5 h-3.5" /> Create Supplier Restock &amp; Receive Stock
-                </button>
+                      <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => updateRow(r.id, { adjustmentType: 'increase' })}
+                          className={`flex-1 py-1.5 flex items-center justify-center gap-1 font-bold transition ${
+                            r.adjustmentType === 'increase' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                          }`}
+                          title="Increase"
+                        >
+                          <ArrowUpRight className="w-3.5 h-3.5" />+
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateRow(r.id, { adjustmentType: 'decrease' })}
+                          className={`flex-1 py-1.5 flex items-center justify-center gap-1 font-bold transition ${
+                            r.adjustmentType === 'decrease' ? 'bg-rose-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'
+                          }`}
+                          title="Decrease"
+                        >
+                          <ArrowDownRight className="w-3.5 h-3.5" />−
+                        </button>
+                      </div>
+
+                      <input
+                        type="number"
+                        min="1"
+                        value={r.quantity}
+                        onChange={(e) => updateRow(r.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                        className="w-full border border-slate-300 rounded-lg p-1.5 text-xs font-extrabold text-slate-800 text-center focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      <select
+                        value={r.reason}
+                        onChange={(e) => updateRow(r.id, { reason: e.target.value })}
+                        className="w-full border border-slate-300 rounded-lg p-1.5 text-xs font-semibold bg-white text-slate-700 min-w-0"
+                      >
+                        {REASONS.map((rs) => (
+                          <option key={rs} value={rs}>
+                            {rs}
+                          </option>
+                        ))}
+                      </select>
+
+                      <span className={`text-right font-mono font-black text-sm ${r.adjustmentType === 'increase' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {newStock}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => removeRow(r.id)}
+                        disabled={rows.length === 1}
+                        className="text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed justify-self-end"
+                        title="Remove row"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
 
-          {/* Quantity & Expected New Quantity */}
-          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={addRow}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Product Row
+            </button>
+
+            {/* Shared notes */}
             <div>
-              <label className="text-slate-600 font-bold block mb-1">Quantity to Adjust *</label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-extrabold text-slate-800 focus:ring-2 focus:ring-blue-500"
+              <label className="text-slate-600 font-bold block mb-1">Notes / Internal Reference (applies to all rows)</label>
+              <textarea
+                rows={2}
+                placeholder="Add audit ref number or inspector note…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full border border-slate-300 rounded-xl p-2 text-xs"
               />
             </div>
-            <div>
-              <label className="text-slate-600 font-bold block mb-1">New Total Stock</label>
-              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 font-extrabold text-sm flex items-center justify-between">
-                <span>Updated:</span>
-                <span>
-                  {selectedProduct
-                    ? Math.max(
-                        0,
-                        selectedProduct.stockQty +
-                          (adjustmentType === 'increase' ? quantity : -quantity)
-                      )
-                    : 0}{' '}
-                  {selectedProduct?.unit || 'Pcs'}
-                </span>
-              </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0 bg-white">
+            <span className="text-xs font-bold text-slate-500">
+              {validRows.length} product{validRows.length === 1 ? '' : 's'} to adjust
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                Save All Adjustments
+              </button>
             </div>
-          </div>
-
-          {/* Reason */}
-          <div>
-            <label className="text-slate-600 font-bold block mb-1">Adjustment Reason *</label>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 bg-white"
-            >
-              <option value="Physical Audit Count Variance">Physical Audit Count Variance</option>
-              <option value="Found Uncounted Stock in Warehouse">Found Uncounted Stock in Warehouse</option>
-              <option value="Physical Damage / Loss Correction">Physical Damage / Loss Correction</option>
-              <option value="Barcode Re-tagging Reclassification">Barcode Re-tagging Reclassification</option>
-              <option value="Initial Opening Stock Correction">Initial Opening Stock Correction</option>
-              <option value="OTHER_CUSTOM">+ Other Reason...</option>
-            </select>
-            {reason === 'OTHER_CUSTOM' && (
-              <input
-                type="text"
-                placeholder="Enter custom reason..."
-                value={customReason}
-                onChange={(e) => setCustomReason(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl p-2 mt-2 text-xs font-medium"
-              />
-            )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-slate-600 font-bold block mb-1">Notes / Internal Reference</label>
-            <textarea
-              rows={2}
-              placeholder="Add audit ref number or inspector note..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full border border-slate-300 rounded-xl p-2 text-xs"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              Save Stock Adjustment
-            </button>
           </div>
         </form>
       </div>
