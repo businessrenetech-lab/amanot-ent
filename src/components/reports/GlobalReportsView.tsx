@@ -38,6 +38,7 @@ import {
 import * as XLSX from 'xlsx';
 import { generateBrandedReportPDF } from '../../utils/reportPdfGenerator';
 import { formatDate } from '../../utils/formatDate';
+import { paymentModeLabel, splitBreakdownText } from '../../utils/paymentLabel';
 import { UnifiedStatementView } from './UnifiedStatementView';
 
 export const GlobalReportsView: React.FC = () => {
@@ -639,7 +640,8 @@ export const GlobalReportsView: React.FC = () => {
       DueAmountBDT: s.dueAmount,
       TotalCostBDT: s.totalCost,
       GrossMarginBDT: s.grandTotal - s.totalCost,
-      PaymentMode: s.paymentMode,
+      PaymentMode: s.paymentSplits && s.paymentSplits.length > 1 ? 'split' : s.paymentMode,
+      PaymentBreakdown: s.paymentSplits && s.paymentSplits.length > 1 ? splitBreakdownText(s.paymentSplits) : '',
       PaymentStatus: s.paymentStatus,
       Staff: s.createdByStaffName
     }));
@@ -967,7 +969,9 @@ export const GlobalReportsView: React.FC = () => {
           s.business === 'amanot_electronics' ? 'Electronics' : 'Enterprise',
           `${s.customerName} (${s.customerPhone})`,
           s.items.reduce((a, i) => a + i.quantity, 0).toString(),
-          s.paymentMode.toUpperCase(),
+          s.paymentSplits && s.paymentSplits.length > 1
+            ? splitBreakdownText(s.paymentSplits)
+            : s.paymentMode.toUpperCase(),
           s.grandTotal.toLocaleString(),
           s.paidAmount.toLocaleString(),
           s.dueAmount.toLocaleString(),
@@ -1850,7 +1854,12 @@ export const GlobalReportsView: React.FC = () => {
                                     <Package className="w-3.5 h-3.5" /> Line Items & Cost Margin Breakdown for {s.id}
                                   </h4>
                                   <span className="text-[11px] text-slate-500">
-                                    Staff: <strong className="text-slate-800">{s.createdByStaffName || 'Admin'}</strong> | Payment Mode: <strong className="uppercase">{s.paymentMode}</strong>
+                                    Staff: <strong className="text-slate-800">{s.createdByStaffName || 'Admin'}</strong> | Payment:{' '}
+                                    <strong className="text-slate-800">
+                                      {s.paymentSplits && s.paymentSplits.length > 1
+                                        ? splitBreakdownText(s.paymentSplits)
+                                        : paymentModeLabel(s.paymentMode)}
+                                    </strong>
                                   </span>
                                 </div>
 

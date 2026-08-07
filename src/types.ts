@@ -167,6 +167,22 @@ export interface SaleInvoice {
   accountName?: string;
   customerPaymentNumber?: string;
   saleType?: 'retail' | 'wholesale'; // Wholesale sales post to the customer AR ledger
+  /**
+   * Split tender: when a customer settles one invoice with more than one method
+   * (e.g. part cash + part bKash), each portion is recorded here. When present,
+   * paidAmount equals the sum of split amounts and each split posts to its own
+   * account. Absent/empty means a single-method payment (accountId + paymentMode).
+   */
+  paymentSplits?: PaymentSplit[];
+}
+
+/** One tender line when an invoice is settled with multiple payment methods. */
+export interface PaymentSplit {
+  paymentMode: PaymentMode;
+  accountId?: string;
+  accountName?: string;
+  amount: number;
+  paymentNumber?: string; // customer's bKash/Nagad/Rocket number for this portion
 }
 
 /**

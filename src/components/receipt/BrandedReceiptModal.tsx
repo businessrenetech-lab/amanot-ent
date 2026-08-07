@@ -24,6 +24,7 @@ import { exportCustomerInvoicePDF } from '../../utils/invoicePdfExport';
 import { AMANOT_ELECTRONICS_ADDRESS } from '../../constants/business';
 import { formatDate } from '../../utils/formatDate';
 import { capacitySuffix } from '../../utils/capacityLabel';
+import { paymentModeLabel } from '../../utils/paymentLabel';
 import {
   KonkaLogo,
   GreeLogo,
@@ -536,6 +537,16 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                     <span>Paid Amount:</span>
                     <span>৳{invoice.paidAmount.toLocaleString()}</span>
                   </div>
+                  {invoice.paymentSplits && invoice.paymentSplits.length > 1 && (
+                    <div className="border-t border-black pt-1 space-y-0.5">
+                      {invoice.paymentSplits.map((s, i) => (
+                        <div key={i} className="flex justify-between text-[10px]">
+                          <span>• {paymentModeLabel(s.paymentMode)}:</span>
+                          <span>৳{s.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {invoice.dueAmount > 0 ? (
                     <div className="flex justify-between text-black font-black border-t border-black pt-1">
                       <span>Due Balance:</span>
@@ -739,6 +750,17 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   <span>Paid Amount:</span>
                   <span className="font-mono">৳{invoice.paidAmount.toLocaleString()}</span>
                 </div>
+
+                {invoice.paymentSplits && invoice.paymentSplits.length > 1 && (
+                  <div className="border-t border-dashed border-slate-300 pt-1 space-y-0.5 text-[11px] text-slate-600 font-semibold">
+                    {invoice.paymentSplits.map((s, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>• {paymentModeLabel(s.paymentMode)}</span>
+                        <span className="font-mono">৳{s.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {invoice.dueAmount > 0 ? (
                   <div className="flex justify-between text-rose-700 font-black border-t border-dashed border-rose-300 pt-1">

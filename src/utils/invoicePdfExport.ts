@@ -4,6 +4,7 @@ import { formatDate } from './formatDate';
 import { DEFAULT_BRAND_LOGOS } from '../data/brandLogos';
 import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
 import { capacitySuffix } from './capacityLabel';
+import { paymentModeLabel } from './paymentLabel';
 
 interface Settings {
   binNumber?: string;
@@ -398,6 +399,18 @@ export function exportCustomerInvoicePDF(
         <span>Paid Amount:</span>
         <span>৳${invoice.paidAmount.toLocaleString()}</span>
       </div>
+      ${
+        invoice.paymentSplits && invoice.paymentSplits.length > 1
+          ? `<div style="border-top: 1px solid #000; margin-top: 4px; padding-top: 4px;">${invoice.paymentSplits
+              .map(
+                (s) =>
+                  `<div style="display:flex;justify-content:space-between;font-size:10px;"><span>&bull; ${paymentModeLabel(
+                    s.paymentMode
+                  )}</span><span>৳${s.amount.toLocaleString()}</span></div>`
+              )
+              .join('')}</div>`
+          : ''
+      }
       ${
         invoice.dueAmount > 0
           ? `<div style="display: flex; justify-content: space-between; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; font-weight: 900;">

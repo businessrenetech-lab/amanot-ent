@@ -101,6 +101,11 @@ export const POSView: React.FC = () => {
   // Payment state
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
+  // Split tender: pay one invoice with multiple methods (e.g. part cash + part bKash)
+  const [splitMode, setSplitMode] = useState<boolean>(false);
+  const [splitRows, setSplitRows] = useState<
+    Array<{ id: string; mode: PaymentMode; accountId: string; amount: number; paymentNumber?: string }>
+  >([]);
   const [customerPaymentNumber, setCustomerPaymentNumber] = useState('');
   const [overallDiscount, setOverallDiscount] = useState<number>(0);
   const [discountMode, setDiscountMode] = useState<'amount' | 'percent'>('amount');
@@ -148,6 +153,22 @@ export const POSView: React.FC = () => {
       setPaymentMode(editingSaleInvoice.paymentMode === 'bkash_nagad' ? 'bkash' : editingSaleInvoice.paymentMode || 'cash');
       setSelectedAccountId(editingSaleInvoice.accountId || '');
       setCustomerPaymentNumber(editingSaleInvoice.customerPaymentNumber || '');
+      // Restore a split tender so appended edits keep the multi-method breakdown
+      if (editingSaleInvoice.paymentSplits && editingSaleInvoice.paymentSplits.length > 1) {
+        setSplitMode(true);
+        setSplitRows(
+          editingSaleInvoice.paymentSplits.map((s, i) => ({
+            id: `split_load_${i}`,
+            mode: s.paymentMode,
+            accountId: s.accountId || '',
+            amount: s.amount,
+            paymentNumber: s.paymentNumber || ''
+          }))
+        );
+      } else {
+        setSplitMode(false);
+        setSplitRows([]);
+      }
       setIsInstallment(!!editingSaleInvoice.isInstallment);
       setSaleNotes(editingSaleInvoice.notes || '');
       // Keep the price mode matching the invoice so appended items price correctly
@@ -474,10 +495,17 @@ export const POSView: React.FC = () => {
 
   // Keep paidAmount in sync with grandTotal unless cashier typed custom paid amount
   useEffect(() => {
-    if (!isCustomPaid) {
+    if (!isCustomPaid && !splitMode) {
       setPaidAmount(grandTotal);
     }
-  }, [grandTotal, isCustomPaid]);
+  }, [grandTotal, isCustomPaid, splitMode]);
+
+  // In split mode the paid figure is driven by the sum of the tender rows.
+  const splitTotal = useMemo(
+    () => splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
+    [splitRows]
+  );
+  const effectivePaidAmount = splitMode ? splitTotal : paidAmount;
 
   // Detect predominant business for this sale
   const determinedBusiness: BusinessType = useMemo(() => {
@@ -496,7 +524,57 @@ export const POSView: React.FC = () => {
     setSelectedAccountId(resolved?.id || '');
   }, [accounts, paymentMode, determinedBusiness, selectedAccountId]);
 
-  const dueAmount = Math.max(0, grandTotal - paidAmount);
+  // --- Split tender helpers ---
+  const defaultAccountFor = (mode: PaymentMode): string =>
+    resolvePaymentAccount(accounts, mode, determinedBusiness)?.id || '';
+
+  const makeSplitRow = (mode: PaymentMode, amount = 0) => ({
+    id: `split_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+    mode,
+    accountId: defaultAccountFor(mode),
+    amount,
+    paymentNumber: ''
+  });
+
+  const enableSplitMode = () => {
+    setSplitMode(true);
+    setIsInstallment(false);
+    setIsCustomPaid(true);
+    // Seed with the current method carrying the full total, plus an empty bKash row.
+    const first = paymentMode === 'installment' ? 'cash' : paymentMode;
+    setSplitRows([makeSplitRow(first, grandTotal), makeSplitRow('bkash', 0)]);
+  };
+
+  const disableSplitMode = () => {
+    setSplitMode(false);
+    setSplitRows([]);
+    setIsCustomPaid(false);
+  };
+
+  const addSplitRow = () => setSplitRows((prev) => [...prev, makeSplitRow('cash', 0)]);
+  const removeSplitRow = (id: string) =>
+    setSplitRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+  const updateSplitRow = (
+    id: string,
+    patch: Partial<{ mode: PaymentMode; accountId: string; amount: number; paymentNumber: string }>
+  ) =>
+    setSplitRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const next = { ...r, ...patch };
+        // When the method changes, re-point the account to that method's default.
+        if (patch.mode && patch.mode !== r.mode) next.accountId = defaultAccountFor(patch.mode);
+        return next;
+      })
+    );
+
+  // Drop the remaining unpaid balance into the given split row.
+  const fillRemainingInto = (id: string) => {
+    const others = splitRows.filter((r) => r.id !== id).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    updateSplitRow(id, { amount: Math.max(0, grandTotal - others) });
+  };
+
+  const dueAmount = Math.max(0, grandTotal - effectivePaidAmount);
 
   // Check editing permission
   const isEditingPostedSale = editingSaleInvoice && !editingSaleInvoice.isDraft;
@@ -515,16 +593,64 @@ export const POSView: React.FC = () => {
       return;
     }
 
-    const effectivePaymentMode: PaymentMode = isInstallment ? 'installment' : paymentMode;
+    // --- Split tender path: settle one invoice across multiple methods ---
+    let splitPayload:
+      | Array<{ paymentMode: PaymentMode; accountId: string; amount: number; paymentNumber?: string }>
+      | undefined;
+    if (splitMode && !isDraftSave) {
+      const funded = splitRows.filter((r) => (Number(r.amount) || 0) > 0);
+      if (funded.length < 2) {
+        showToast('Split payment needs at least two funded methods — or turn off split.');
+        return;
+      }
+      for (const r of funded) {
+        if (!r.accountId) {
+          showToast(`Choose an account for the ${r.mode.replace('_', ' ')} portion.`);
+          return;
+        }
+        if (['bkash', 'nagad', 'rocket'].includes(r.mode)) {
+          const digits = (r.paymentNumber || '').replace(/\D/g, '');
+          const normalized = digits.startsWith('880') ? `0${digits.slice(3)}` : digits;
+          if (normalized.length !== 11) {
+            showToast(`Enter the customer's valid 11-digit ${r.mode} number for that portion.`);
+            return;
+          }
+        }
+      }
+      if (splitTotal > grandTotal) {
+        showToast(`Split total ৳${splitTotal.toLocaleString()} exceeds the grand total. Adjust the amounts.`);
+        return;
+      }
+      splitPayload = funded.map((r) => {
+        const digits = (r.paymentNumber || '').replace(/\D/g, '');
+        const normalized = digits.startsWith('880') ? `0${digits.slice(3)}` : digits;
+        return {
+          paymentMode: r.mode,
+          accountId: r.accountId,
+          amount: Number(r.amount),
+          paymentNumber: ['bkash', 'nagad', 'rocket'].includes(r.mode) ? normalized : undefined
+        };
+      });
+    }
+
+    // Primary method/account = the largest tender in a split, else the single selection.
+    const primaryTender = splitPayload ? [...splitPayload].sort((a, b) => b.amount - a.amount)[0] : undefined;
+    const effectivePaymentMode: PaymentMode = splitPayload
+      ? primaryTender!.paymentMode
+      : isInstallment
+      ? 'installment'
+      : paymentMode;
     const targetAccount = isDraftSave
       ? undefined
+      : splitPayload
+      ? accounts.find((a) => a.id === primaryTender!.accountId)
       : resolvePaymentAccount(accounts, effectivePaymentMode, determinedBusiness, selectedAccountId);
     if (!isDraftSave && !targetAccount) {
       showToast(`Add an active ${effectivePaymentMode.replace('_', ' ')} account before completing this sale.`);
       return;
     }
 
-    const isMobileWallet = ['bkash', 'nagad', 'rocket'].includes(effectivePaymentMode);
+    const isMobileWallet = !splitPayload && ['bkash', 'nagad', 'rocket'].includes(effectivePaymentMode);
     const walletDigits = customerPaymentNumber.replace(/\D/g, '');
     const normalizedWalletNumber = walletDigits.startsWith('880')
       ? `0${walletDigits.slice(3)}`
@@ -533,6 +659,8 @@ export const POSView: React.FC = () => {
       showToast(`Enter the customer's valid 11-digit ${effectivePaymentMode} number.`);
       return;
     }
+    // A split's wallet number (for SMS/receipt) comes from its mfs portion.
+    const splitWalletNumber = splitPayload?.find((s) => s.paymentNumber)?.paymentNumber;
 
     const formattedItems = cart.map((i) => ({
       productId: i.product.id,
@@ -564,13 +692,14 @@ export const POSView: React.FC = () => {
           specialDiscountAmount > 0 && spDiscountMode === 'percent' ? spDiscountInput : undefined,
         referralName: specialDiscountAmount > 0 ? referralName.trim() || undefined : undefined,
         taxAmount: 0,
-        paidAmount: isDraftSave ? 0 : paidAmount,
+        paidAmount: isDraftSave ? 0 : effectivePaidAmount,
         paymentMode: effectivePaymentMode,
         accountId: targetAccount?.id,
-        customerPaymentNumber: isMobileWallet ? normalizedWalletNumber : undefined,
-        isInstallment,
-        installmentMonths: isInstallment ? installmentMonths : undefined,
-        downPayment: isInstallment ? downPayment : undefined,
+        paymentSplits: splitPayload,
+        customerPaymentNumber: isMobileWallet ? normalizedWalletNumber : splitWalletNumber,
+        isInstallment: splitPayload ? false : isInstallment,
+        installmentMonths: !splitPayload && isInstallment ? installmentMonths : undefined,
+        downPayment: !splitPayload && isInstallment ? downPayment : undefined,
         notes: saleNotes,
         isDraft: isDraftSave,
         saleType: editingSaleInvoice?.saleType ?? (globalPriceType === 'wholesale' ? 'wholesale' : 'retail')
@@ -592,13 +721,14 @@ export const POSView: React.FC = () => {
           specialDiscountAmount > 0 && spDiscountMode === 'percent' ? spDiscountInput : undefined,
         referralName: specialDiscountAmount > 0 ? referralName.trim() || undefined : undefined,
         taxAmount: 0,
-        paidAmount: isDraftSave ? 0 : paidAmount,
+        paidAmount: isDraftSave ? 0 : effectivePaidAmount,
         paymentMode: effectivePaymentMode,
         accountId: targetAccount?.id,
-        customerPaymentNumber: isMobileWallet ? normalizedWalletNumber : undefined,
-        isInstallment,
-        installmentMonths: isInstallment ? installmentMonths : undefined,
-        downPayment: isInstallment ? downPayment : undefined,
+        paymentSplits: splitPayload,
+        customerPaymentNumber: isMobileWallet ? normalizedWalletNumber : splitWalletNumber,
+        isInstallment: splitPayload ? false : isInstallment,
+        installmentMonths: !splitPayload && isInstallment ? installmentMonths : undefined,
+        downPayment: !splitPayload && isInstallment ? downPayment : undefined,
         notes: saleNotes,
         isDraft: isDraftSave,
         saleType: editingSaleInvoice?.saleType ?? (globalPriceType === 'wholesale' ? 'wholesale' : 'retail')
@@ -628,6 +758,8 @@ export const POSView: React.FC = () => {
     setDownPayment(0);
     setIsInstallment(false);
     setCustomerPaymentNumber('');
+    setSplitMode(false);
+    setSplitRows([]);
     setIsCartExpanded(false);
     setSaleNotes('');
   };
@@ -1253,82 +1385,210 @@ export const POSView: React.FC = () => {
 
             {/* Payment + Totals */}
             <div className="p-2.5 space-y-2">
-              {/* Payment Methods */}
-              <div className="grid grid-cols-4 gap-1">
-                {[
-                  { id: 'cash', label: 'Cash' },
-                  { id: 'bkash', label: 'bKash' },
-                  { id: 'nagad', label: 'Nagad' },
-                  { id: 'rocket', label: 'Rocket' },
-                  { id: 'card', label: 'Card' },
-                  { id: 'installment', label: 'EMI' },
-                  { id: 'bank_transfer', label: 'Bank' }
-                ].map((m: { id: PaymentMode; label: string }) => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setPaymentMode(m.id);
-                      if (m.id === 'installment') {
-                        const initialDownPayment = isCustomPaid ? Math.min(paidAmount, grandTotal) : 0;
-                        setIsInstallment(true);
-                        setPaidAmount(initialDownPayment);
-                        setDownPayment(initialDownPayment);
-                        setIsCustomPaid(true);
-                      } else {
-                        if (isInstallment) {
-                          setPaidAmount(grandTotal);
-                          setDownPayment(0);
-                          setIsCustomPaid(false);
-                        }
-                        setIsInstallment(false);
-                      }
-                      if (!['bkash', 'nagad', 'rocket'].includes(m.id)) setCustomerPaymentNumber('');
-                    }}
-                    className={`py-1 text-[10px] font-extrabold rounded-lg border transition-all ${
-                      paymentMode === m.id
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              {/* Single vs Split tender toggle */}
+              <div className="grid grid-cols-2 gap-1 bg-slate-100 p-0.5 rounded-lg">
+                <button
+                  type="button"
+                  onClick={disableSplitMode}
+                  className={`py-1 text-[10px] font-extrabold rounded-md transition ${
+                    !splitMode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Single Method
+                </button>
+                <button
+                  type="button"
+                  onClick={() => (splitMode ? undefined : enableSplitMode())}
+                  className={`py-1 text-[10px] font-extrabold rounded-md transition flex items-center justify-center gap-1 ${
+                    splitMode ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Layers className="w-3 h-3" /> Split Payment
+                </button>
               </div>
 
-              {['bkash', 'nagad', 'rocket'].includes(paymentMode) && (
-                <div className="relative">
-                  <Smartphone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={customerPaymentNumber}
-                    onChange={(e) => setCustomerPaymentNumber(e.target.value.replace(/[^\d+]/g, '').slice(0, 14))}
-                    placeholder={`Customer ${paymentMode} number (11 digits)`}
-                    className="w-full pl-8 pr-2 py-1.5 border border-slate-300 rounded-lg text-[11px] font-bold text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              {!splitMode && (
+                <>
+                  {/* Payment Methods */}
+                  <div className="grid grid-cols-4 gap-1">
+                    {[
+                      { id: 'cash', label: 'Cash' },
+                      { id: 'bkash', label: 'bKash' },
+                      { id: 'nagad', label: 'Nagad' },
+                      { id: 'rocket', label: 'Rocket' },
+                      { id: 'card', label: 'Card' },
+                      { id: 'installment', label: 'EMI' },
+                      { id: 'bank_transfer', label: 'Bank' }
+                    ].map((m: { id: PaymentMode; label: string }) => (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          setPaymentMode(m.id);
+                          if (m.id === 'installment') {
+                            const initialDownPayment = isCustomPaid ? Math.min(paidAmount, grandTotal) : 0;
+                            setIsInstallment(true);
+                            setPaidAmount(initialDownPayment);
+                            setDownPayment(initialDownPayment);
+                            setIsCustomPaid(true);
+                          } else {
+                            if (isInstallment) {
+                              setPaidAmount(grandTotal);
+                              setDownPayment(0);
+                              setIsCustomPaid(false);
+                            }
+                            setIsInstallment(false);
+                          }
+                          if (!['bkash', 'nagad', 'rocket'].includes(m.id)) setCustomerPaymentNumber('');
+                        }}
+                        className={`py-1 text-[10px] font-extrabold rounded-lg border transition-all ${
+                          paymentMode === m.id
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {['bkash', 'nagad', 'rocket'].includes(paymentMode) && (
+                    <div className="relative">
+                      <Smartphone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        value={customerPaymentNumber}
+                        onChange={(e) => setCustomerPaymentNumber(e.target.value.replace(/[^\d+]/g, '').slice(0, 14))}
+                        placeholder={`Customer ${paymentMode} number (11 digits)`}
+                        className="w-full pl-8 pr-2 py-1.5 border border-slate-300 rounded-lg text-[11px] font-bold text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Target Account Selector */}
+                  <div className="flex items-center justify-between text-[11px] bg-slate-50 p-1.5 px-2 rounded-lg border border-slate-200">
+                    <span className="text-slate-600 font-extrabold flex items-center gap-1">
+                      <Landmark className="w-3 h-3 text-blue-600" /> Account:
+                    </span>
+                    <select
+                      value={selectedAccountId}
+                      onChange={(e) => setSelectedAccountId(e.target.value)}
+                      className="bg-white border border-slate-300 text-slate-900 font-extrabold text-[11px] rounded px-2 py-0.5 focus:outline-none max-w-[220px] truncate"
+                    >
+                      {compatiblePaymentAccounts.length === 0 && (
+                        <option value="">No compatible account</option>
+                      )}
+                      {compatiblePaymentAccounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.accountName} (৳{a.currentBalance.toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
-              {/* Target Account Selector */}
-              <div className="flex items-center justify-between text-[11px] bg-slate-50 p-1.5 px-2 rounded-lg border border-slate-200">
-                <span className="text-slate-600 font-extrabold flex items-center gap-1">
-                  <Landmark className="w-3 h-3 text-blue-600" /> Account:
-                </span>
-                <select
-                  value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="bg-white border border-slate-300 text-slate-900 font-extrabold text-[11px] rounded px-2 py-0.5 focus:outline-none max-w-[220px] truncate"
-                >
-                  {compatiblePaymentAccounts.length === 0 && (
-                    <option value="">No compatible account</option>
-                  )}
-                  {compatiblePaymentAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.accountName} (৳{a.currentBalance.toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Split tender editor */}
+              {splitMode && (
+                <div className="space-y-1.5 bg-indigo-50/60 border border-indigo-200 rounded-lg p-2">
+                  {splitRows.map((row) => {
+                    const rowAccounts = getCompatiblePaymentAccounts(accounts, row.mode, determinedBusiness);
+                    const isWallet = ['bkash', 'nagad', 'rocket'].includes(row.mode);
+                    return (
+                      <div key={row.id} className="space-y-1 bg-white rounded-lg border border-indigo-100 p-1.5">
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={row.mode}
+                            onChange={(e) => updateSplitRow(row.id, { mode: e.target.value as PaymentMode })}
+                            className="border border-slate-300 rounded-md px-1 py-1 text-[10px] font-extrabold text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="bkash">bKash</option>
+                            <option value="nagad">Nagad</option>
+                            <option value="rocket">Rocket</option>
+                            <option value="card">Card</option>
+                            <option value="bank_transfer">Bank</option>
+                          </select>
+                          <div className="relative flex-1">
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-black">৳</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.amount || ''}
+                              onChange={(e) => updateSplitRow(row.id, { amount: Math.max(0, Number(e.target.value)) })}
+                              placeholder="0"
+                              className="w-full pl-4 pr-1 py-1 border border-slate-300 rounded-md text-[11px] font-mono font-black text-emerald-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => fillRemainingInto(row.id)}
+                            title="Fill remaining balance"
+                            className="px-1.5 py-1 bg-slate-700 hover:bg-indigo-600 text-white rounded-md text-[9px] font-extrabold shrink-0"
+                          >
+                            Rest
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSplitRow(row.id)}
+                            disabled={splitRows.length === 1}
+                            className="text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                            title="Remove method"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Landmark className="w-3 h-3 text-indigo-500 shrink-0" />
+                          <select
+                            value={row.accountId}
+                            onChange={(e) => updateSplitRow(row.id, { accountId: e.target.value })}
+                            className="flex-1 min-w-0 border border-slate-200 rounded-md px-1 py-0.5 text-[10px] font-bold text-slate-700 bg-slate-50 focus:outline-none truncate"
+                          >
+                            {rowAccounts.length === 0 && <option value="">No compatible account</option>}
+                            {rowAccounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.accountName} (৳{a.currentBalance.toLocaleString()})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {isWallet && (
+                          <div className="relative">
+                            <Smartphone className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="tel"
+                              inputMode="numeric"
+                              value={row.paymentNumber || ''}
+                              onChange={(e) =>
+                                updateSplitRow(row.id, { paymentNumber: e.target.value.replace(/[^\d+]/g, '').slice(0, 14) })
+                              }
+                              placeholder={`${row.mode} number (11 digits)`}
+                              className="w-full pl-7 pr-1 py-1 border border-slate-300 rounded-md text-[10px] font-bold text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={addSplitRow}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-extrabold text-[10px] rounded-md"
+                    >
+                      <Plus className="w-3 h-3" /> Add Method
+                    </button>
+                    <div className="text-[10px] font-extrabold text-right">
+                      <span className={`${splitTotal > grandTotal ? 'text-rose-600' : 'text-slate-600'}`}>
+                        Tendered ৳{splitTotal.toLocaleString()}
+                      </span>
+                      <span className="text-slate-400"> / ৳{grandTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Totals Box */}
               <div className="space-y-1 text-xs bg-slate-50 rounded-lg p-2 border border-slate-200">
@@ -1464,7 +1724,18 @@ export const POSView: React.FC = () => {
                 )}
               </div>
 
+              {/* Split summary: total tendered is derived from the rows above */}
+              {splitMode && (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-[11px] font-black">
+                  <span className="flex items-center gap-1 text-emerald-800">
+                    <Layers className="w-3.5 h-3.5" /> Total Paid (Split)
+                  </span>
+                  <span className="font-mono text-emerald-700">৳{splitTotal.toLocaleString()}</span>
+                </div>
+              )}
+
               {/* Paid Input + Quick Actions */}
+              {!splitMode && (
               <div className="flex gap-1.5 items-center">
                 <div className="relative flex-1">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-black">PAID</span>
@@ -1504,6 +1775,7 @@ export const POSView: React.FC = () => {
                   Due
                 </button>
               </div>
+              )}
 
               {/* Due highlight + EMI */}
               {dueAmount > 0 && (

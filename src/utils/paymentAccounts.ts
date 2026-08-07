@@ -1,6 +1,17 @@
 import { Account, AccountType, BusinessType, PaymentMode, SaleInvoice } from '../types';
 
-type SalePayment = Pick<SaleInvoice, 'accountId' | 'paidAmount' | 'isDraft'>;
+type SalePayment = Pick<SaleInvoice, 'accountId' | 'paidAmount' | 'isDraft' | 'paymentSplits'>;
+
+/** How much of a sale's collected money landed in one specific account. */
+function collectedInto(sale: SalePayment | undefined, accountId: string): number {
+  if (!sale || sale.isDraft) return 0;
+  if (sale.paymentSplits && sale.paymentSplits.length > 0) {
+    return sale.paymentSplits
+      .filter((s) => s.accountId === accountId)
+      .reduce((sum, s) => sum + s.amount, 0);
+  }
+  return sale.accountId === accountId ? sale.paidAmount : 0;
+}
 
 export const ALL_BUSINESSES: BusinessType[] = ['amanot_electronics', 'amanot_enterprise'];
 
@@ -135,14 +146,9 @@ export function applySalePaymentToAccounts(
   nextSale?: SalePayment
 ): Account[] {
   return accounts.map((account) => {
-    let balanceChange = 0;
-
-    if (!previousSale?.isDraft && previousSale?.accountId === account.id) {
-      balanceChange -= previousSale.paidAmount;
-    }
-    if (!nextSale?.isDraft && nextSale?.accountId === account.id) {
-      balanceChange += nextSale.paidAmount;
-    }
+    // Net the money out of the old snapshot and into the new one — works for both
+    // single-account payments and multi-account split tenders.
+    const balanceChange = collectedInto(nextSale, account.id) - collectedInto(previousSale, account.id);
 
     return balanceChange === 0
       ? account

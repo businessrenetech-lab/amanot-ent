@@ -25,6 +25,7 @@ import {
   AuditConfig,
   AppSettings,
   SaleInvoice,
+  PaymentSplit,
   Quotation,
   InstallmentPlan,
   SMSLog,
@@ -174,12 +175,14 @@ interface AppContextType {
     paidAmount: number;
     paymentMode: PaymentMode;
     accountId?: string;
+    paymentSplits?: PaymentSplit[];
     customerPaymentNumber?: string;
     isInstallment: boolean;
     installmentMonths?: number;
     downPayment?: number;
     notes?: string;
     isDraft?: boolean;
+    saleType?: 'retail' | 'wholesale';
   }) => SaleInvoice;
   updateSale: (
     invoiceId: string,
@@ -209,12 +212,14 @@ interface AppContextType {
       paidAmount: number;
       paymentMode: PaymentMode;
       accountId?: string;
+      paymentSplits?: PaymentSplit[];
       customerPaymentNumber?: string;
       isInstallment: boolean;
       installmentMonths?: number;
       downPayment?: number;
       notes?: string;
       isDraft?: boolean;
+      saleType?: 'retail' | 'wholesale';
     }
   ) => SaleInvoice;
   deleteSale: (invoiceId: string) => void;
@@ -1283,6 +1288,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paidAmount: number;
     paymentMode: PaymentMode;
     accountId?: string;
+    paymentSplits?: PaymentSplit[];
     customerPaymentNumber?: string;
     isInstallment: boolean;
     installmentMonths?: number;
@@ -1357,8 +1363,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const grandTotal = subtotal + installationFeeTotal - saleData.discountTotal + saleData.taxAmount;
     const dueAmount = saleData.isDraft ? grandTotal : Math.max(0, grandTotal - saleData.paidAmount);
+    // Split tender: keep only funded portions and stamp each with its account name.
+    // Two-or-more funded methods = a real split; anything less falls back to single.
+    const fundedSplits = (saleData.paymentSplits || [])
+      .filter((s) => s.amount > 0)
+      .map((s) => ({ ...s, accountName: accounts.find((a) => a.id === s.accountId)?.accountName }));
+    const paymentSplits = !saleData.isDraft && fundedSplits.length > 1 ? fundedSplits : undefined;
+    // For a split, the primary account is the largest tender (used for display fallbacks).
+    const primarySplit = paymentSplits
+      ? [...paymentSplits].sort((a, b) => b.amount - a.amount)[0]
+      : undefined;
     const targetAccount = saleData.isDraft
       ? undefined
+      : paymentSplits
+      ? accounts.find((a) => a.id === primarySplit?.accountId)
       : resolvePaymentAccount(accounts, saleData.paymentMode, saleData.business, saleData.accountId);
     const invoiceNum = saleData.isDraft
       ? `DRAFT-2026-${Math.floor(1000 + Math.random() * 9000)}`
@@ -1440,6 +1458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isDraft: saleData.isDraft,
       accountId: targetAccount?.id,
       accountName: targetAccount?.accountName,
+      paymentSplits,
       customerPaymentNumber: saleData.customerPaymentNumber,
       saleType: saleData.saleType || 'retail'
     };
@@ -1554,6 +1573,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paidAmount: number;
       paymentMode: PaymentMode;
       accountId?: string;
+      paymentSplits?: PaymentSplit[];
       customerPaymentNumber?: string;
       isInstallment: boolean;
       installmentMonths?: number;
@@ -1629,8 +1649,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const grandTotal = subtotal + installationFeeTotal - saleData.discountTotal + saleData.taxAmount;
     const dueAmount = saleData.isDraft ? grandTotal : Math.max(0, grandTotal - saleData.paidAmount);
+    const fundedSplits = (saleData.paymentSplits || [])
+      .filter((s) => s.amount > 0)
+      .map((s) => ({ ...s, accountName: accounts.find((a) => a.id === s.accountId)?.accountName }));
+    const paymentSplits = !saleData.isDraft && fundedSplits.length > 1 ? fundedSplits : undefined;
+    const primarySplit = paymentSplits
+      ? [...paymentSplits].sort((a, b) => b.amount - a.amount)[0]
+      : undefined;
     const targetAccount = saleData.isDraft
       ? undefined
+      : paymentSplits
+      ? accounts.find((a) => a.id === primarySplit?.accountId)
       : resolvePaymentAccount(
           accounts,
           saleData.paymentMode,
@@ -1665,6 +1694,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isDraft: saleData.isDraft,
       accountId: targetAccount?.id,
       accountName: targetAccount?.accountName,
+      paymentSplits,
       customerPaymentNumber: saleData.customerPaymentNumber,
       saleType: saleData.saleType ?? existing.saleType
     };
