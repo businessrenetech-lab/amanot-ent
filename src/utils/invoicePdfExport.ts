@@ -66,6 +66,7 @@ const CASH_MEMO_CSS = `
   --ink: #000000;
   --soft: #3f3f3f;
   --accent: #000000;
+  --rule: #c9c9c9;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -123,9 +124,9 @@ const CASH_MEMO_CSS = `
 .cm-title::before, .cm-title::after {
   content: '';
   flex: 1;
-  height: 3.1pt;
-  border-top: 1.9pt solid currentColor;
-  border-bottom: 0.6pt solid currentColor;
+  height: 2.2pt;
+  border-top: 0.6pt solid var(--rule);
+  border-bottom: 0.4pt solid var(--rule);
 }
 .cm-title span {
   font-size: 12.5pt;
@@ -163,8 +164,8 @@ const CASH_MEMO_CSS = `
 .cm-items { width: 100%; border-collapse: collapse; }
 .cm-items th {
   padding: 1.8mm 1.7mm;
-  border-top: 1.3pt solid var(--ink);
-  border-bottom: 1.3pt solid var(--ink);
+  border-top: 0.6pt solid var(--rule);
+  border-bottom: 0.6pt solid var(--rule);
   font-size: 9.5pt;
   font-weight: 700;
   text-align: left;
@@ -172,7 +173,7 @@ const CASH_MEMO_CSS = `
 }
 .cm-items td {
   padding: 2mm 1.7mm;
-  border-bottom: 0.5pt solid var(--ink);
+  border-bottom: 0.4pt solid var(--rule);
   vertical-align: top;
 }
 .cm-items .cm-num { text-align: right; white-space: nowrap; }
@@ -194,8 +195,8 @@ const CASH_MEMO_CSS = `
   font-size: 11.9pt;
   font-weight: 800;
 }
-.cm-totals tr.cm-key-first td { border-top: 1.3pt solid var(--accent); padding-top: 1.9mm; }
-.cm-totals tr.cm-key-last td { border-bottom: 1.3pt solid var(--accent); padding-bottom: 1.9mm; }
+.cm-totals tr.cm-key-first td { border-top: 0.6pt solid var(--rule); padding-top: 1.9mm; }
+.cm-totals tr.cm-key-last td { border-bottom: 0.6pt solid var(--rule); padding-bottom: 1.9mm; }
 .cm-totals tr.cm-split td { padding-top: 0; font-size: 8.9pt; font-weight: 400; color: var(--soft); }
 .cm-totals tr.cm-split td:first-child { padding-left: 4.8mm; }
 
@@ -213,7 +214,7 @@ const CASH_MEMO_CSS = `
   justify-content: space-between;
   gap: 4.8mm;
   padding-bottom: 0.9mm;
-  border-bottom: 1.3pt solid var(--ink);
+  border-bottom: 0.6pt solid var(--rule);
   font-size: 10.1pt;
   font-weight: 800;
 }
@@ -221,7 +222,7 @@ const CASH_MEMO_CSS = `
 .cm-mini { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
 .cm-mini th, .cm-mini td {
   padding: 1.1mm 1.7mm;
-  border-bottom: 0.5pt solid var(--ink);
+  border-bottom: 0.4pt solid var(--rule);
   text-align: left;
 }
 .cm-mini th { font-weight: 700; }
@@ -232,7 +233,7 @@ const CASH_MEMO_CSS = `
   grid-template-columns: repeat(4, 1fr);
   gap: 2.4mm;
   padding: 1.4mm 1.7mm;
-  border-bottom: 0.5pt solid var(--ink);
+  border-bottom: 0.4pt solid var(--rule);
   font-size: 9.5pt;
 }
 .cm-facts small { display: block; font-size: 8.3pt; color: var(--soft); }
@@ -268,7 +269,7 @@ const CASH_MEMO_CSS = `
   gap: 10.7mm;
   margin-top: 4.1mm;
   padding-top: 2.4mm;
-  border-top: 0.5pt solid var(--ink);
+  border-top: 0.4pt solid var(--rule);
 }
 .cm-logos img { height: 6mm; width: auto; filter: grayscale(100%) contrast(140%); }
 .cm-color .cm-logos img { filter: none; }
