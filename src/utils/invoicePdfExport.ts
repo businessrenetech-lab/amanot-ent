@@ -2,486 +2,613 @@ import { SaleInvoice, InstallmentPlan } from '../types';
 import { numberToWordsBDT } from './numberToWords';
 import { formatDate } from './formatDate';
 import { DEFAULT_BRAND_LOGOS } from '../data/brandLogos';
-import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
-import { capacitySuffix } from './capacityLabel';
+import { AMANOT_ELECTRONICS_ADDRESS, resolveBusinessPhone } from '../constants/business';
 import { paymentModeLabel } from './paymentLabel';
 
 interface Settings {
-  binNumber?: string;
   amanotElectronicsAddress?: string;
   amanotElectronicsPhone?: string;
   amanotEnterpriseAddress?: string;
   amanotEnterprisePhone?: string;
 }
 
+type WholesaleBalance = { previousBalance: number; closingBalance: number };
+
+const esc = (value: unknown): string =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const money = (n: number): string =>
+  (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const clock = (d: Date): string =>
+  d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+/** Time of day the sale was entered, or '' when the stored value is date-only. */
+const entryTime = (createdAt?: string): string => {
+  const raw = String(createdAt || '').trim();
+  if (/T\d{2}:\d{2}/.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return clock(parsed);
+  }
+  const hm = raw.match(/\s(\d{2}):(\d{2})/);
+  if (!hm) return '';
+  const d = new Date();
+  d.setHours(Number(hm[1]), Number(hm[2]), 0, 0);
+  return clock(d);
+};
+
+const EMBLEM_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="5"/>
+  <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2"/>
+  <path fill="currentColor" d="M 30 50 C 30 35 42 25 58 25 C 70 25 78 32 78 42 L 30 42 C 30 60 42 68 58 68 C 68 68 74 63 76 56 L 86 58 C 82 72 70 80 56 80 C 38 80 30 65 30 50 Z"/>
+  <path fill="currentColor" d="M 45 30 L 55 30 L 68 65 L 58 65 L 53 52 L 42 52 L 39 65 L 30 65 Z M 44 44 L 50 44 L 47 35 Z"/>
+</svg>`;
+
+const CASH_MEMO_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Noto+Serif+Bengali:wght@600&display=swap');
+
+.cm-sheet {
+  box-sizing: border-box;
+  display: flex;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm 12mm 11mm;
+  background: #ffffff;
+}
+.cm * { box-sizing: border-box; margin: 0; padding: 0; }
+.cm {
+  --ink: #000000;
+  --soft: #3f3f3f;
+  --accent: #000000;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: 'Archivo', 'Arial Narrow', Arial, sans-serif;
+  font-size: 10.1pt;
+  line-height: 1.35;
+  color: var(--ink);
+  text-align: left;
+  font-variant-numeric: tabular-nums lining-nums;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cm-color { --accent: #1d3c8f; }
+
+.cm-head { text-align: center; }
+.cm-bismillah {
+  font-family: 'Noto Serif Bengali', serif;
+  font-size: 8.9pt;
+  font-weight: 600;
+  margin-bottom: 1.9mm;
+}
+.cm-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.1mm;
+  color: var(--accent);
+}
+.cm-brand svg { width: 12.5mm; height: 12.5mm; flex: none; }
+.cm-brand h1 {
+  font-size: 22pt;
+  font-weight: 800;
+  font-stretch: 125%;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.cm-partner {
+  margin-top: 1.9mm;
+  font-size: 11.3pt;
+  font-weight: 700;
+  font-stretch: 112%;
+}
+.cm-addr { margin-top: 0.7mm; font-size: 9.5pt; color: var(--soft); }
+.cm-addr b { color: var(--ink); font-weight: 600; }
+
+.cm-title {
+  display: flex;
+  align-items: center;
+  gap: 4.2mm;
+  margin: 3.8mm 0 3.6mm;
+  color: var(--accent);
+}
+.cm-title::before, .cm-title::after {
+  content: '';
+  flex: 1;
+  height: 3.1pt;
+  border-top: 1.9pt solid currentColor;
+  border-bottom: 0.6pt solid currentColor;
+}
+.cm-title span {
+  font-size: 12.5pt;
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: 0.3em;
+  margin-right: -0.3em;
+  text-transform: uppercase;
+}
+
+.cm-meta {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  column-gap: 8.3mm;
+  margin-bottom: 3.6mm;
+}
+.cm-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 2.4mm;
+  row-gap: 0.9mm;
+  align-content: start;
+}
+.cm-dl dt {
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
+  font-weight: 600;
+}
+.cm-dl dt::after { content: ':'; }
+.cm-dl dd { min-width: 0; overflow-wrap: anywhere; }
+.cm-dl dd.cm-strong { font-weight: 700; font-size: 11.3pt; line-height: 1.2; }
+.cm-dl dd.cm-nowrap { white-space: nowrap; overflow-wrap: normal; }
+
+.cm-items { width: 100%; border-collapse: collapse; }
+.cm-items th {
+  padding: 1.8mm 1.7mm;
+  border-top: 1.3pt solid var(--ink);
+  border-bottom: 1.3pt solid var(--ink);
+  font-size: 9.5pt;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+.cm-items td {
+  padding: 2mm 1.7mm;
+  border-bottom: 0.5pt solid var(--ink);
+  vertical-align: top;
+}
+.cm-items .cm-num { text-align: right; white-space: nowrap; }
+.cm-items .cm-mid { text-align: center; }
+.cm-items td.cm-brandcell { font-weight: 700; text-transform: uppercase; }
+.cm-items td.cm-amount { font-weight: 700; }
+.cm-desc { font-weight: 600; }
+.cm-sub { margin-top: 0.5mm; font-size: 8.9pt; color: var(--soft); }
+
+.cm-sum { display: flex; justify-content: flex-end; margin-top: 1.7mm; }
+.cm-totals { width: 78.5mm; border-collapse: collapse; }
+.cm-totals td { padding: 0.9mm 1.7mm; }
+.cm-totals td:first-child { font-weight: 600; }
+.cm-totals td:last-child { text-align: right; white-space: nowrap; }
+.cm-totals tr.cm-key td {
+  padding-top: 1.3mm;
+  padding-bottom: 1.3mm;
+  color: var(--accent);
+  font-size: 11.9pt;
+  font-weight: 800;
+}
+.cm-totals tr.cm-key-first td { border-top: 1.3pt solid var(--accent); padding-top: 1.9mm; }
+.cm-totals tr.cm-key-last td { border-bottom: 1.3pt solid var(--accent); padding-bottom: 1.9mm; }
+.cm-totals tr.cm-split td { padding-top: 0; font-size: 8.9pt; font-weight: 400; color: var(--soft); }
+.cm-totals tr.cm-split td:first-child { padding-left: 4.8mm; }
+
+.cm-words {
+  margin-top: 3.1mm;
+  font-size: 10.1pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cm-block { margin-top: 3.8mm; break-inside: avoid; page-break-inside: avoid; }
+.cm-block h2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 4.8mm;
+  padding-bottom: 0.9mm;
+  border-bottom: 1.3pt solid var(--ink);
+  font-size: 10.1pt;
+  font-weight: 800;
+}
+.cm-block h2 span { font-weight: 500; }
+.cm-mini { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+.cm-mini th, .cm-mini td {
+  padding: 1.1mm 1.7mm;
+  border-bottom: 0.5pt solid var(--ink);
+  text-align: left;
+}
+.cm-mini th { font-weight: 700; }
+.cm-mini .cm-num { text-align: right; white-space: nowrap; }
+.cm-mini tr.cm-strong-row td { font-weight: 800; }
+.cm-facts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2.4mm;
+  padding: 1.4mm 1.7mm;
+  border-bottom: 0.5pt solid var(--ink);
+  font-size: 9.5pt;
+}
+.cm-facts small { display: block; font-size: 8.3pt; color: var(--soft); }
+.cm-facts b { font-weight: 700; }
+
+/* Left blank for the shop's hand-applied PAID seal. */
+.cm-stamps {
+  flex: 1;
+  min-height: 34mm;
+  margin-bottom: 4mm;
+}
+
+.cm-nb { font-size: 9.5pt; font-weight: 700; }
+.cm-sign {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 11.9mm;
+  margin-top: 10.7mm;
+}
+.cm-sign div { flex: 0 1 54.7mm; text-align: center; }
+.cm-sign small { display: block; margin-bottom: 0.9mm; font-size: 8.9pt; color: var(--soft); }
+.cm-sign span {
+  display: block;
+  padding-top: 1.4mm;
+  font-size: 9.5pt;
+  font-weight: 700;
+}
+.cm-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10.7mm;
+  margin-top: 4.1mm;
+  padding-top: 2.4mm;
+  border-top: 0.5pt solid var(--ink);
+}
+.cm-logos img { height: 6mm; width: auto; filter: grayscale(100%) contrast(140%); }
+.cm-color .cm-logos img { filter: none; }
+.cm-logos b { font-size: 10.7pt; font-weight: 800; letter-spacing: 0.08em; }
+.cm-printed { margin-top: 1.7mm; text-align: center; font-size: 7.7pt; color: var(--soft); }
+
+@media print {
+  .cm-sheet { width: auto; min-height: 270mm; margin: 0; padding: 0; }
+}
+`;
+
 /**
- * Export Customer Invoice as high-fidelity vector PDF in a new tab.
- * Automatically invokes browser print for 100% crisp vector rendering.
+ * Builds the A4 cash memo. One template feeds the on-screen preview, the
+ * direct print and the new-tab PDF export, so they can never drift apart.
  */
-export function exportCustomerInvoicePDF(
+export function buildCashMemo(
   invoice: SaleInvoice,
   settings?: Settings,
   mode: 'bw' | 'color' = 'bw',
   installmentPlan?: InstallmentPlan,
-  wholesale?: { previousBalance: number; closingBalance: number }
-) {
+  wholesale?: WholesaleBalance
+): { css: string; html: string } {
   const isElectronics = invoice.business === 'amanot_electronics';
   const brandTitle = isElectronics ? 'AMANAT ELECTRONICS' : 'AMANAT ENTERPRISE';
-  const partnerTitle = isElectronics ? 'Channel partner of ELECTRO MART LIMITED' : 'Authorized Haier & Electronics Outlet';
-  const binNumber = settings?.binNumber || 'BIN: 006091988-0602';
+  const partnerTitle = isElectronics
+    ? 'Channel partner of Electro Mart Limited'
+    : 'Authorized Haier & Electronics Outlet';
   const brandAddress = isElectronics
     ? settings?.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
     : settings?.amanotEnterpriseAddress || 'SSK Road, Feni Sadar, Feni.';
-  const brandPhone = isElectronics
-    ? settings?.amanotElectronicsPhone || '+880 1711-001122, +880 1819-223344'
-    : settings?.amanotEnterprisePhone || '+880 1871-186562';
+  const brandPhone = resolveBusinessPhone(
+    isElectronics ? settings?.amanotElectronicsPhone : settings?.amanotEnterprisePhone
+  );
 
-  // Model is printed per line item (Brand | Model | Cap), so no summary row is needed
-  const itemSerials = invoice.items.map((it) => (it as any).serialNo || (it as any).chassisNo).filter(Boolean).join(', ');
+  const hasSchedule = !!(installmentPlan && installmentPlan.schedule && installmentPlan.schedule.length);
+  const title = invoice.isDraft ? 'Draft Memo' : wholesale || hasSchedule ? 'Invoice' : 'Cash Memo';
+  const time = entryTime(invoice.createdAt);
+  const splits = invoice.paymentSplits && invoice.paymentSplits.length > 1 ? invoice.paymentSplits : [];
+  const paymentText = splits.length ? 'Split payment' : paymentModeLabel(invoice.paymentMode);
+  const installationTotal =
+    invoice.installationFeeTotal ??
+    invoice.items.reduce((sum, it) => sum + (it.installationFee || 0) + (it.extraPipingFee || 0), 0);
 
-  const greeB64 = DEFAULT_BRAND_LOGOS['gree'];
-  const haikoB64 = DEFAULT_BRAND_LOGOS['haiko'];
-  const konkaB64 = DEFAULT_BRAND_LOGOS['konka'];
+  const itemRows = invoice.items
+    .map((item, idx) => {
+      const serial = (item as any).serialNo || (item as any).chassisNo;
+      const showModel =
+        item.model && !item.productName.toLowerCase().includes(String(item.model).toLowerCase());
+      const fees = item.includeInstallationFee && (item.installationFee || item.extraPipingFee);
+      const sub = [
+        showModel ? `Model: ${esc(item.model)}` : '',
+        serial ? `S/N: ${esc(serial)}` : '',
+        fees
+          ? `Installation ${money(item.installationFee || 0)}${
+              item.extraPipingFt
+                ? `, extra piping ${esc(item.extraPipingFt)} ft ${money(item.extraPipingFee || 0)}`
+                : ''
+            }`
+          : ''
+      ].filter(Boolean);
+      return `
+        <tr>
+          <td class="cm-mid">${idx + 1}</td>
+          <td class="cm-brandcell">${esc(item.brand)}</td>
+          <td>
+            <div class="cm-desc">${esc(item.productName)}</div>
+            ${sub.length ? `<div class="cm-sub">${sub.join(' &nbsp;|&nbsp; ')}</div>` : ''}
+          </td>
+          <td class="cm-num">${money(item.quantity)}</td>
+          <td class="cm-num">${money(item.unitPrice)}</td>
+          <td class="cm-num cm-amount">${money(item.quantity * item.unitPrice)}</td>
+        </tr>`;
+    })
+    .join('');
 
-  const takaInWords = numberToWordsBDT(invoice.grandTotal);
+  const balance = Math.max(0, invoice.grandTotal - (invoice.isDraft ? 0 : invoice.paidAmount));
+  const splitRows = splits
+    .map(
+      (s) =>
+        `<tr class="cm-split"><td>${esc(paymentModeLabel(s.paymentMode))}</td><td>${money(s.amount)}</td></tr>`
+    )
+    .join('');
 
-  // Wholesale "Balance Brought Forward" block (only for wholesale invoices).
   const wholesaleHtml = wholesale
     ? `
-    <div style="margin-top:12px; border:2px solid #000; border-radius:4px; overflow:hidden;">
-      <div style="background:#e2e8f0; padding:5px 8px; font-weight:900; font-size:11px; text-transform:uppercase;">
-        Wholesale Account — Balance Brought Forward
-      </div>
-      <table style="width:100%; border-collapse:collapse; font-size:11px;">
+    <section class="cm-block">
+      <h2>Wholesale account &ndash; balance brought forward</h2>
+      <table class="cm-mini">
         <tbody>
-          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">Previous Balance (B/F)</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${wholesale.previousBalance.toLocaleString()}</td></tr>
-          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">This Invoice Total</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${invoice.grandTotal.toLocaleString()}</td></tr>
-          <tr style="border-top:1px solid #000;"><td style="padding:4px 8px;font-weight:700;">Payment Received</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:700;">৳${invoice.paidAmount.toLocaleString()}</td></tr>
-          <tr style="border-top:1px solid #000;background:#f1f5f9;"><td style="padding:4px 8px;font-weight:900;">Closing Balance (Total Due)</td><td style="padding:4px 8px;text-align:right;border-left:1px solid #000;font-family:monospace;font-weight:900;">৳${wholesale.closingBalance.toLocaleString()}</td></tr>
+          <tr><td>Previous Balance (B/F)</td><td class="cm-num">${money(wholesale.previousBalance)}</td></tr>
+          <tr><td>This Invoice Total</td><td class="cm-num">${money(invoice.grandTotal)}</td></tr>
+          <tr><td>Payment Received</td><td class="cm-num">${money(invoice.paidAmount)}</td></tr>
+          <tr class="cm-strong-row"><td>Closing Balance (Total Due)</td><td class="cm-num">${money(wholesale.closingBalance)}</td></tr>
         </tbody>
       </table>
-    </div>`
+    </section>`
     : '';
 
-  // Installment / EMI schedule block (only for EMI sales).
+  const statusText = (s: { status: string; paidDate?: string }) =>
+    s.status === 'paid'
+      ? `Paid${s.paidDate ? ` (${formatDate(s.paidDate)})` : ''}`
+      : s.status === 'overdue'
+      ? 'Overdue'
+      : s.status === 'partial'
+      ? 'Partial'
+      : 'Due';
+
   const scheduleHtml =
-    installmentPlan && installmentPlan.schedule && installmentPlan.schedule.length
+    hasSchedule && installmentPlan
       ? `
-    <div style="margin-top:14px; border:2px solid #000; border-radius:4px; overflow:hidden;">
-      <div style="background:#e2e8f0; padding:6px 10px; display:flex; justify-content:space-between; font-weight:900; font-size:11px; text-transform:uppercase;">
-        <span>Installment / EMI Payment Schedule</span>
-        <span>${installmentPlan.paidInstallments} of ${installmentPlan.totalInstallments} paid</span>
+    <section class="cm-block">
+      <h2>Installment payment schedule <span>${installmentPlan.paidInstallments} of ${installmentPlan.totalInstallments} paid</span></h2>
+      <div class="cm-facts">
+        <div><small>Total payable</small><b>${money(installmentPlan.totalAmount)}</b></div>
+        <div><small>Down payment</small><b>${money(installmentPlan.downPayment)}</b></div>
+        <div><small>Financed</small><b>${money(installmentPlan.financedAmount)}</b></div>
+        <div><small>Monthly &times; ${installmentPlan.totalInstallments}</small><b>${money(installmentPlan.monthlyEmi)}</b></div>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid #000; font-size:10px;">
-        <div style="padding:6px; border-right:1px solid #000;"><div style="font-size:8px; text-transform:uppercase; color:#475569; font-weight:800;">Total Payable</div><div style="font-weight:900;">৳${installmentPlan.totalAmount.toLocaleString()}</div></div>
-        <div style="padding:6px; border-right:1px solid #000;"><div style="font-size:8px; text-transform:uppercase; color:#475569; font-weight:800;">Down Payment</div><div style="font-weight:900;">৳${installmentPlan.downPayment.toLocaleString()}</div></div>
-        <div style="padding:6px; border-right:1px solid #000;"><div style="font-size:8px; text-transform:uppercase; color:#475569; font-weight:800;">Financed</div><div style="font-weight:900;">৳${installmentPlan.financedAmount.toLocaleString()}</div></div>
-        <div style="padding:6px;"><div style="font-size:8px; text-transform:uppercase; color:#475569; font-weight:800;">Monthly EMI &times; ${installmentPlan.totalInstallments}</div><div style="font-weight:900;">৳${installmentPlan.monthlyEmi.toLocaleString()}</div></div>
-      </div>
-      <table style="width:100%; border-collapse:collapse; font-size:10px;">
+      <table class="cm-mini">
         <thead>
-          <tr style="background:#f1f5f9;">
-            <th style="padding:5px; border-right:1px solid #000; text-align:left;">#</th>
-            <th style="padding:5px; border-right:1px solid #000; text-align:left;">Due Date</th>
-            <th style="padding:5px; border-right:1px solid #000; text-align:right;">Installment Amount</th>
-            <th style="padding:5px; text-align:center;">Status</th>
-          </tr>
+          <tr><th>No.</th><th>Due Date</th><th class="cm-num">Amount</th><th>Status</th></tr>
         </thead>
         <tbody>
           ${installmentPlan.schedule
             .map(
               (s) => `
-            <tr style="border-top:1px solid #000;">
-              <td style="padding:5px; border-right:1px solid #000; font-weight:700;">${s.installmentNo}</td>
-              <td style="padding:5px; border-right:1px solid #000;">${formatDate(s.dueDate)}</td>
-              <td style="padding:5px; border-right:1px solid #000; text-align:right; font-weight:700;">৳${s.amount.toLocaleString()}</td>
-              <td style="padding:5px; text-align:center; font-weight:900; text-transform:uppercase;">${
-                s.status === 'paid'
-                  ? 'PAID' + (s.paidDate ? ' (' + formatDate(s.paidDate) + ')' : '')
-                  : s.status === 'overdue'
-                  ? 'OVERDUE'
-                  : s.status === 'partial'
-                  ? 'PARTIAL'
-                  : 'DUE'
-              }</td>
-            </tr>`
+          <tr>
+            <td>${s.installmentNo}</td>
+            <td>${formatDate(s.dueDate)}</td>
+            <td class="cm-num">${money(s.amount)}</td>
+            <td>${esc(statusText(s))}</td>
+          </tr>`
             )
             .join('')}
         </tbody>
       </table>
-    </div>`
+    </section>`
       : '';
 
-  const html = `<!DOCTYPE html>
+  const logos = [
+    { key: 'konka', name: 'KONKA' },
+    { key: 'gree', name: 'GREE' },
+    { key: 'haiko', name: 'HAIKO' }
+  ]
+    .map(({ key, name }) =>
+      DEFAULT_BRAND_LOGOS[key] ? `<img src="${DEFAULT_BRAND_LOGOS[key]}" alt="${name}" />` : `<b>${name}</b>`
+    )
+    .concat(isElectronics ? [] : ['<b>HAIER</b>'])
+    .join('');
+
+  const now = new Date();
+
+  const html = `
+<div class="cm${mode === 'color' ? ' cm-color' : ''}">
+  <header class="cm-head">
+    <p class="cm-bismillah">বিসমিল্লাহির রাহমানির রাহিম</p>
+    <div class="cm-brand">${EMBLEM_SVG}<h1>${brandTitle}</h1></div>
+    <p class="cm-partner">${esc(partnerTitle)}</p>
+    <p class="cm-addr">${esc(brandAddress)}</p>
+    <p class="cm-addr">Contact: <b>${esc(brandPhone)}</b></p>
+  </header>
+
+  <div class="cm-title"><span>${title}</span></div>
+
+  <section class="cm-meta">
+    <dl class="cm-dl">
+      <dt>Name</dt><dd class="cm-strong">${esc(invoice.customerName)}</dd>
+      <dt>Address</dt><dd>${esc(invoice.customerAddress || 'Showroom Counter Purchase')}</dd>
+      <dt>Mobile</dt><dd>${esc(invoice.customerPhone)}</dd>
+    </dl>
+    <dl class="cm-dl">
+      <dt>Invoice No.</dt><dd class="cm-strong cm-nowrap">${esc(invoice.id)}</dd>
+      <dt>Date</dt><dd>${formatDate(invoice.createdAt)}</dd>
+      ${time ? `<dt>Entry Time</dt><dd>${time}</dd>` : ''}
+      <dt>Prepared By</dt><dd>${esc(invoice.createdByStaffName || 'Authorized Staff')}</dd>
+      ${
+        invoice.isDraft
+          ? ''
+          : `<dt>Payment</dt><dd>${esc(paymentText)}${
+              invoice.customerPaymentNumber ? ` (${esc(invoice.customerPaymentNumber)})` : ''
+            }</dd>`
+      }
+    </dl>
+  </section>
+
+  <table class="cm-items">
+    <thead>
+      <tr>
+        <th class="cm-mid" style="width:9.5mm">SL</th>
+        <th style="width:25mm">Brand Name</th>
+        <th>Product Description</th>
+        <th class="cm-num" style="width:14.3mm">Qty</th>
+        <th class="cm-num" style="width:26.2mm">Unit Price</th>
+        <th class="cm-num" style="width:29.8mm">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <section class="cm-sum">
+    <table class="cm-totals">
+      <tbody>
+        <tr><td>Total Amount</td><td>${money(invoice.subtotal)}</td></tr>
+        ${invoice.discountTotal > 0 ? `<tr><td>Less Discount</td><td>${money(invoice.discountTotal)}</td></tr>` : ''}
+        ${installationTotal > 0 ? `<tr><td>Add Installation</td><td>${money(installationTotal)}</td></tr>` : ''}
+        <tr class="cm-key cm-key-first"><td>Net Payable Amount</td><td>${money(invoice.grandTotal)}</td></tr>
+        <tr class="cm-key"><td>Paid Amount</td><td>${money(invoice.isDraft ? 0 : invoice.paidAmount)}</td></tr>
+        ${splitRows}
+        <tr class="cm-key cm-key-last"><td>Balance</td><td>${money(balance)}</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="cm-words">Taka: ${esc(numberToWordsBDT(invoice.grandTotal).replace(/ Taka( and| Only)/, '$1'))}</p>
+
+  ${wholesaleHtml}
+  ${scheduleHtml}
+
+  <div class="cm-stamps" aria-hidden="true"></div>
+
+  <footer class="cm-foot">
+    <p class="cm-nb">Goods once sold are not returnable or exchangeable.</p>
+    <div class="cm-sign">
+      <div><span>Customer Signature</span></div>
+      <div><span>${brandTitle}</span></div>
+    </div>
+    <div class="cm-logos">${logos}</div>
+    <p class="cm-printed">Printed ${formatDate(now)} ${clock(now)}</p>
+  </footer>
+</div>`;
+
+  return { css: CASH_MEMO_CSS, html };
+}
+
+function cashMemoDocument(
+  invoice: SaleInvoice,
+  settings: Settings | undefined,
+  mode: 'bw' | 'color',
+  installmentPlan: InstallmentPlan | undefined,
+  wholesale: WholesaleBalance | undefined,
+  autoPrint: boolean
+): string {
+  const memo = buildCashMemo(invoice, settings, mode, installmentPlan, wholesale);
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Invoice_${invoice.id}</title>
+  <title>Invoice_${esc(invoice.id)}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      color: #000000;
-      background: #ffffff;
-      padding: 24px;
-      max-width: 820px;
-      margin: 0 auto;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    .font-bold { font-weight: 700; }
-    .font-black { font-weight: 900; }
-    .font-mono { font-family: monospace; }
-    .uppercase { text-transform: uppercase; }
-
-    .header-bismillah {
-      font-size: 13px;
-      font-weight: 800;
-      margin-bottom: 6px;
-      font-family: serif;
-    }
-    .header-main {
-      border-bottom: 2px solid #000000;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .brand-title {
-      font-size: 22px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-    }
-    .partner-title {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      margin-top: 2px;
-    }
-    .header-sub {
-      font-size: 11px;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-    .sl-date-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      padding-top: 8px;
-      border-top: 1px dashed #94a3b8;
-      font-family: monospace;
-      font-weight: 700;
-      font-size: 12px;
-    }
-    .sl-box {
-      border: 1.5px solid #000000;
-      padding: 2px 8px;
-      font-weight: 900;
-    }
-    .cust-box {
-      border: 1.5px solid #000000;
-      padding: 10px 12px;
-      margin-bottom: 16px;
-      background: #f8fafc;
-      font-weight: 700;
-      font-size: 12px;
-    }
-    .cust-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 6px;
-    }
-    .cust-row:last-child { margin-bottom: 0; }
-    .dotted-line {
-      border-bottom: 1px dotted #000000;
-      display: inline-block;
-      padding: 0 4px;
-      font-weight: 800;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 2px solid #000000;
-      margin-bottom: 16px;
-    }
-    th {
-      background: #e2e8f0;
-      color: #000000;
-      border: 1px solid #000000;
-      border-bottom: 2px solid #000000;
-      padding: 8px;
-      font-size: 11px;
-      font-weight: 900;
-      text-transform: uppercase;
-    }
-    td {
-      border: 1px solid #000000;
-      padding: 8px;
-      font-size: 11.5px;
-    }
-    .summary-row {
-      background: #f8fafc;
-      font-weight: 800;
-    }
-
-    .taka-summary-grid {
-      display: grid;
-      grid-template-columns: 1fr 240px;
-      gap: 12px;
-      border-bottom: 2px solid #000000;
-      padding-bottom: 12px;
-      margin-bottom: 24px;
-    }
-    .taka-box {
-      border: 1.5px solid #000000;
-      padding: 8px 12px;
-      background: #f8fafc;
-    }
-    .taka-words {
-      font-size: 13px;
-      font-weight: 800;
-      font-style: italic;
-      margin-top: 2px;
-    }
-    .amount-box {
-      border: 1.5px solid #000000;
-      padding: 8px 12px;
-      background: #f8fafc;
-      font-family: monospace;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .signatures {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 48px;
-      margin-bottom: 24px;
-      font-size: 11px;
-      font-weight: 800;
-    }
-    .sig-line {
-      border-top: 2px solid #000000;
-      width: 180px;
-      text-align: center;
-      padding-top: 4px;
-      margin-top: 4px;
-    }
-
-    .logos-bar {
-      border-top: 2px solid #000000;
-      padding-top: 12px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      align-items: center;
-      text-align: center;
-    }
-    .logo-img {
-      height: 28px;
-      max-height: 28px;
-      width: auto;
-      object-contain: contain;
-      filter: grayscale(100%) contrast(150%);
-    }
-
+    ${memo.css}
+    html, body { margin: 0; padding: 0; }
+    body { background: #e5e7eb; padding: 8mm 0; }
+    .cm-sheet { box-shadow: 0 1mm 5mm rgba(0, 0, 0, 0.18); }
+    @page { size: A4 portrait; margin: 12mm 12mm 11mm; }
     @media print {
-      body { padding: 0; }
-      @page { size: A4 portrait; margin: 10mm; }
+      body { background: #ffffff; padding: 0; }
+      .cm-sheet { box-shadow: none; }
     }
   </style>
 </head>
 <body>
-  <div class="text-center header-bismillah">বিসমিল্লাহির রাহমানির রাহিম</div>
-
-  <div class="header-main">
-    <div class="brand-title">${brandTitle}</div>
-    <div class="partner-title">${partnerTitle}</div>
-    <div class="header-sub">${binNumber} &nbsp;•&nbsp; ${brandAddress}</div>
-    <div class="header-sub">Mobile: ${brandPhone}</div>
-
-    <div class="sl-date-row">
-      <div>SL No : <span class="sl-box">${invoice.id}</span></div>
-      <div>Date : <span style="text-decoration: underline dotted;">${formatDate(invoice.createdAt)}</span></div>
-    </div>
-  </div>
-
-  <div class="cust-box">
-    <div class="cust-row">
-      <div style="flex:1;">Name : <span class="dotted-line" style="min-width: 220px;">${invoice.customerName}</span></div>
-      <div>Phone : <span class="dotted-line" style="min-width: 140px;">${invoice.customerPhone}</span></div>
-    </div>
-    <div class="cust-row">
-      <div style="width:100%;">Address : <span class="dotted-line" style="width: 85%;">${invoice.customerAddress || 'Showroom Counter Purchase'}</span></div>
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 45px;" class="text-center">SL. NO.</th>
-        <th class="text-left">DESCRIPTION</th>
-        <th style="width: 50px;" class="text-center">QTY</th>
-        <th style="width: 100px;" class="text-right">UNIT PRICE</th>
-        <th style="width: 110px;" class="text-right">AMOUNT (BDT)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${invoice.items
-        .map(
-          (item, idx) => `
-        <tr>
-          <td class="text-center font-mono font-bold">${idx + 1}</td>
-          <td>
-            <div class="font-black uppercase" style="font-size: 13px;">${item.productName}${capacitySuffix(item.productName, item.capacity) ? ` &mdash; ${capacitySuffix(item.productName, item.capacity)}` : ''}</div>
-            ${
-              item.includeInstallationFee && (item.installationFee || item.extraPipingFee)
-                ? `<div style="font-size: 10px; font-weight: 700; color: #1e293b; margin-top: 2px;">
-                    + Installation Fee: ৳${(item.installationFee || 0).toLocaleString()}
-                    ${item.extraPipingFt ? ` (${item.extraPipingFt}ft extra piping @ ৳${item.extraPipingFee})` : ''}
-                  </div>`
-                : ''
-            }
-          </td>
-          <td class="text-center font-mono font-bold">${item.quantity}</td>
-          <td class="text-right font-mono font-bold">৳${item.unitPrice.toLocaleString()}</td>
-          <td class="text-right font-mono font-black">৳${item.total.toLocaleString()}</td>
-        </tr>
-      `
-        )
-        .join('')}
-
-      <tr class="summary-row">
-        <td colSpan="3" style="border-right: 1px solid #000000;"></td>
-        <td class="text-right">Subtotal:</td>
-        <td class="text-right font-mono font-bold">৳${invoice.subtotal.toLocaleString()}</td>
-      </tr>
-
-      ${
-        invoice.discountTotal > 0
-          ? `
-      <tr class="summary-row">
-        <td colSpan="3" style="border-right: 1px solid #000000;">
-          Sl. No: <span class="font-mono" style="font-weight: normal;">${itemSerials || 'Verified at Delivery'}</span>
-        </td>
-        <td class="text-right">Less Discount:</td>
-        <td class="text-right font-mono font-bold">-৳${invoice.discountTotal.toLocaleString()}</td>
-      </tr>
-      `
-          : ''
-      }
-
-      <tr style="background: #e2e8f0; font-weight: 900; font-size: 13px;">
-        <td colSpan="3" style="font-size: 10.5px; border-right: 1px solid #000000;">
-          N.B. Goods Once Sold Are Not Refundable
-        </td>
-        <td class="text-right uppercase" style="font-size: 11px;">Total Tk.</td>
-        <td class="text-right font-mono" style="font-size: 15px; font-weight: 900;">
-          ৳${invoice.grandTotal.toLocaleString()}
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="taka-summary-grid">
-    <div class="taka-box">
-      <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #475569;">Taka (in words) :</span>
-      <div class="taka-words">${takaInWords}</div>
-    </div>
-    <div class="amount-box">
-      <div style="display: flex; justify-content: space-between;">
-        <span>Paid Amount:</span>
-        <span>৳${invoice.paidAmount.toLocaleString()}</span>
-      </div>
-      ${
-        invoice.paymentSplits && invoice.paymentSplits.length > 1
-          ? `<div style="border-top: 1px solid #000; margin-top: 4px; padding-top: 4px;">${invoice.paymentSplits
-              .map(
-                (s) =>
-                  `<div style="display:flex;justify-content:space-between;font-size:10px;"><span>&bull; ${paymentModeLabel(
-                    s.paymentMode
-                  )}</span><span>৳${s.amount.toLocaleString()}</span></div>`
-              )
-              .join('')}</div>`
-          : ''
-      }
-      ${
-        invoice.dueAmount > 0
-          ? `<div style="display: flex; justify-content: space-between; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; font-weight: 900;">
-              <span>Due Balance:</span>
-              <span>৳${invoice.dueAmount.toLocaleString()}</span>
-            </div>`
-          : `<div style="text-align: right; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; font-weight: 900;">
-              *** PAID IN FULL ***
-            </div>`
-      }
-    </div>
-  </div>
-
-  <div style="border: 1px solid #000; padding: 6px 8px; margin-top: 8px; font-size: 10px; display: flex; flex-wrap: wrap; gap: 6px 18px;">
-    <span><strong>Payment Mode:</strong> ${invoice.paymentMode.replace(/_/g, ' ').toUpperCase()}</span>
-    ${invoice.customerPaymentNumber ? `<span><strong>Customer Wallet:</strong> ${invoice.customerPaymentNumber}</span>` : ''}
-  </div>
-
-  ${wholesaleHtml}
-
-  ${scheduleHtml}
-
-  <div class="signatures">
-    <div style="text-align: center;">
-      <div class="sig-line">Customer's Signature</div>
-    </div>
-    <div style="text-align: center;">
-      <div style="font-size: 10px; color: #475569; margin-bottom: 2px;">Served by: ${invoice.createdByStaffName || 'Authorized Staff'}</div>
-      <div class="sig-line">Authorised Signature</div>
-      <div style="font-size: 10px; font-weight: 800;">${brandTitle}</div>
-    </div>
-  </div>
-
-  <div class="logos-bar" style="grid-template-columns: repeat(${isElectronics ? 3 : 4}, 1fr);">
-    <div>
-      ${konkaB64 ? `<img src="${konkaB64}" class="logo-img" alt="KONKA" />` : '<strong>KONKA</strong>'}
-      <div style="font-size: 8px; font-weight: 800;">LED TV, FRIDGE & APPLIANCES</div>
-    </div>
-    <div>
-      ${greeB64 ? `<img src="${greeB64}" class="logo-img" alt="GREE" />` : '<strong>GREE</strong>'}
-      <div style="font-size: 8px; font-weight: 800;">AIR CONDITIONERS & FRIDGE</div>
-    </div>
-    <div>
-      ${haikoB64 ? `<img src="${haikoB64}" class="logo-img" alt="HAIKO" />` : '<strong>HAIKO</strong>'}
-      <div style="font-size: 8px; font-weight: 800;">TV, AC & FRIDGE</div>
-    </div>
-    ${
-      !isElectronics
-        ? `<div>
-            <div style="font-size: 14px; font-weight: 900; letter-spacing: 1px;">HAIER</div>
-            <div style="font-size: 8px; font-weight: 800;">INSPIRED LIVING</div>
-          </div>`
-        : ''
-    }
-  </div>
-
+  <div class="cm-sheet">${memo.html}</div>
   <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 350);
+    // Printable height of an A4 page inside the @page margins (297 - 12 - 11 - 4mm slack).
+    window.fitMemo = function () {
+      var sheet = document.querySelector('.cm-sheet');
+      var memo = document.querySelector('.cm');
+      if (!sheet || !memo) return;
+      memo.style.zoom = '';
+      sheet.style.minHeight = '0';
+      // A zoomed flex child gets stretched by the un-zoomed height, so drop the stretch while fitting.
+      sheet.style.display = 'block';
+      var limit = (270 * 96) / 25.4;
+      var cs = getComputedStyle(sheet);
+      var pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      var used = function () { return sheet.getBoundingClientRect().height - pad; };
+      if (used() <= limit) { sheet.style.minHeight = ''; sheet.style.display = ''; return; }
+      // Shrinking reflows the text wider, so search for the largest zoom that fits.
+      var lo = 0.45, hi = 1;
+      for (var i = 0; i < 10; i++) {
+        var mid = (lo + hi) / 2;
+        memo.style.zoom = String(mid);
+        if (used() <= limit) lo = mid; else hi = mid;
+      }
+      memo.style.zoom = String(lo);
+    };
+    window.addEventListener('beforeprint', window.fitMemo);
+    window.onload = function () {
+      var go = function () {
+        window.fitMemo();
+        ${autoPrint ? 'setTimeout(function () { window.print(); }, 200);' : ''}
+      };
+      if (document.fonts && document.fonts.ready) { document.fonts.ready.then(go, go); } else { go(); }
     };
   </script>
 </body>
 </html>`;
+}
 
+/** Opens the A4 cash memo in a new tab and invokes the browser print dialog (Save as PDF). */
+export function exportCustomerInvoicePDF(
+  invoice: SaleInvoice,
+  settings?: Settings,
+  mode: 'bw' | 'color' = 'bw',
+  installmentPlan?: InstallmentPlan,
+  wholesale?: WholesaleBalance
+) {
   const win = window.open('', '_blank');
   if (win) {
-    win.document.write(html);
+    win.document.write(cashMemoDocument(invoice, settings, mode, installmentPlan, wholesale, true));
     win.document.close();
   } else {
     alert('Pop-up blocked! Please allow pop-ups for this site to print/export PDF.');
   }
+}
+
+/** Prints the A4 cash memo straight from the current page through a hidden frame. */
+export function printCashMemo(
+  invoice: SaleInvoice,
+  settings?: Settings,
+  mode: 'bw' | 'color' = 'bw',
+  installmentPlan?: InstallmentPlan,
+  wholesale?: WholesaleBalance
+) {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  frame.onload = () => {
+    const win = frame.contentWindow;
+    if (!win) return;
+    const go = () => {
+      (win as Window & { fitMemo?: () => void }).fitMemo?.();
+      win.onafterprint = () => frame.remove();
+      win.focus();
+      win.print();
+    };
+    const fonts = win.document.fonts;
+    if (fonts && fonts.ready) fonts.ready.then(() => setTimeout(go, 150), go);
+    else go();
+  };
+  frame.srcdoc = cashMemoDocument(invoice, settings, mode, installmentPlan, wholesale, false);
+  document.body.appendChild(frame);
 }

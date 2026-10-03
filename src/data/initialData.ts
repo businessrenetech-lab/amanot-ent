@@ -20,7 +20,7 @@ import {
 // Regenerate with: node scripts/generate-electronics.mjs
 import electronicsProducts from './electronicsProducts.json';
 import { DEFAULT_BRAND_LOGOS } from './brandLogos';
-import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
+import { AMANOT_ELECTRONICS_ADDRESS, AMANOT_PHONE } from '../constants/business';
 
 export const INITIAL_STAFF_USERS: StaffUser[] = [
   {
@@ -423,9 +423,9 @@ export const INITIAL_APP_SETTINGS: AppSettings = {
   alphaSmsSenderId: 'AMANOT_BD',
   alphaSmsApiUrl: 'https://api.alphasms.biz/api/v1/sendsms',
   currencySymbol: 'BDT ৳',
-  amanotElectronicsPhone: '+880 1711-001122, +880 1819-223344',
+  amanotElectronicsPhone: AMANOT_PHONE,
   amanotElectronicsAddress: AMANOT_ELECTRONICS_ADDRESS,
-  amanotEnterprisePhone: '+880 1911-556677, +880 1612-889900',
+  amanotEnterprisePhone: AMANOT_PHONE,
   amanotEnterpriseAddress: 'Showroom #4, Haier City Plaza, Stadium Market, Dhaka, Bangladesh',
   brandLogos: DEFAULT_BRAND_LOGOS
 };

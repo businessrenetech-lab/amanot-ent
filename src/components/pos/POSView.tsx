@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BrandLogo } from '../common/BrandLogo';
 import { Product, BusinessType, PaymentMode, SaleInvoice } from '../../types';
@@ -97,6 +97,10 @@ export const POSView: React.FC = () => {
   // CRM record linked to this sale (set when the typed number matches an existing customer)
   const [linkedCustomerId, setLinkedCustomerId] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  // The checkout panel scrolls, so bring the suggestion list into view when it opens.
+  const revealSuggestions = useCallback((el: HTMLDivElement | null) => {
+    el?.scrollIntoView({ block: 'nearest' });
+  }, []);
 
   // Payment state
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
@@ -1323,7 +1327,7 @@ export const POSView: React.FC = () => {
                 </button>
               )}
 
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="relative grid grid-cols-2 gap-1.5">
                 <div className="relative">
                   <Phone className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
                   <input
@@ -1337,31 +1341,6 @@ export const POSView: React.FC = () => {
                       linkedCustomer ? 'border-emerald-400 bg-emerald-50/40' : 'border-slate-300'
                     }`}
                   />
-                  {showCustomerSuggestions && customerSuggestions.length > 0 && (
-                    <div className="absolute z-30 left-0 right-0 bottom-full mb-1 bg-white border border-slate-300 rounded-lg shadow-xl overflow-hidden">
-                      <p className="px-2 py-1 text-[8px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">
-                        Existing customers
-                      </p>
-                      {customerSuggestions.map((c) => (
-                        <button
-                          key={c.id}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleApplyMatchedCustomer(c)}
-                          className="w-full text-left px-2 py-1 hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition"
-                        >
-                          <p className="text-[10px] font-extrabold text-slate-800 truncate">{c.name}</p>
-                          <p className="text-[9px] font-bold text-slate-500 font-mono">
-                            {c.phone}
-                            {c.currentDue > 0 && (
-                              <span className="ml-1 text-rose-600 font-sans">
-                                Due ৳{c.currentDue.toLocaleString()}
-                              </span>
-                            )}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <input
                   type="text"
@@ -1370,6 +1349,34 @@ export const POSView: React.FC = () => {
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+                {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                  <div
+                    ref={revealSuggestions}
+                    className="absolute z-30 left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto bg-white border border-slate-300 rounded-lg shadow-xl"
+                  >
+                    <p className="px-2 py-1 text-[8px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">
+                      Existing customers
+                    </p>
+                    {customerSuggestions.map((c) => (
+                      <button
+                        key={c.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleApplyMatchedCustomer(c)}
+                        className="w-full text-left px-2 py-1 hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition"
+                      >
+                        <p className="text-[10px] font-extrabold text-slate-800 truncate">{c.name}</p>
+                        <p className="text-[9px] font-bold text-slate-500 font-mono">
+                          {c.phone}
+                          {c.currentDue > 0 && (
+                            <span className="ml-1 text-rose-600 font-sans">
+                              Due ৳{c.currentDue.toLocaleString()}
+                            </span>
+                          )}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="relative">
                 <MapPin className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />

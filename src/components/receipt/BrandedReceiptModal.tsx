@@ -20,8 +20,8 @@ import {
 import jsPDF from 'jspdf';
 import { safeHtml2Canvas } from '../../utils/html2canvasFix';
 import { numberToWordsBDT } from '../../utils/numberToWords';
-import { exportCustomerInvoicePDF } from '../../utils/invoicePdfExport';
-import { AMANOT_ELECTRONICS_ADDRESS } from '../../constants/business';
+import { buildCashMemo, exportCustomerInvoicePDF, printCashMemo } from '../../utils/invoicePdfExport';
+import { AMANOT_ELECTRONICS_ADDRESS, resolveBusinessPhone } from '../../constants/business';
 import { formatDate } from '../../utils/formatDate';
 import { capacitySuffix } from '../../utils/capacityLabel';
 import { paymentModeLabel } from '../../utils/paymentLabel';
@@ -196,17 +196,15 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
 
   const brandTitle = isElectronics ? 'AMANAT ELECTRONICS' : 'AMANAT ENTERPRISE';
   const partnerTitle = isElectronics ? 'Channel partner of ELECTRO MART LIMITED' : 'Authorized Haier & Electronics Outlet';
-  const binNumber = settings.binNumber || 'BIN: 006091988-0602';
   const brandAddress = isElectronics
     ? settings.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
     : settings.amanotEnterpriseAddress || 'SSK Road, Feni Sadar, Feni.';
-  const brandPhone = isElectronics
-    ? settings.amanotElectronicsPhone || '01711-360121, 01712-727548'
-    : settings.amanotEnterprisePhone || '01711-360121';
+  const brandPhone = resolveBusinessPhone(
+    isElectronics ? settings.amanotElectronicsPhone : settings.amanotEnterprisePhone
+  );
 
-  // Extract all models & serial numbers for summary section
-  const itemModels = invoice.items.map((it) => it.model).filter(Boolean).join(', ');
-  const itemSerials = invoice.items.map((it) => (it as any).serialNo || (it as any).chassisNo).filter(Boolean).join(', ');
+  const wholesaleBalance = isWholesale ? { previousBalance, closingBalance } : undefined;
+  const cashMemo = buildCashMemo(invoice, settings, 'bw', installmentPlan, wholesaleBalance);
 
   // Download PDF helper (uses html2canvas for 1:1 visual fidelity)
   const downloadPDFMode = async (targetMode: 'bw' | 'color') => {
@@ -235,10 +233,20 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
       });
 
       const imgData = canvas.toDataURL('image/png');
+      const singlePage = targetMode === 'bw';
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
       const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (singlePage) {
+        // The cash memo is always a single A4 page: shrink a long memo to fit.
+        const scale = Math.min(1, pageHeight / imgHeight);
+        const w = imgWidth * scale;
+        pdf.addImage(imgData, 'PNG', (imgWidth - w) / 2, 0, w, imgHeight * scale);
+        pdf.save(`${invoice.id}_${isElectronics ? 'Amanat_Electronics' : 'Amanat_Enterprise'}_Cash_Memo.pdf`);
+        return;
+      }
 
       // Paginate: place the full image on each page shifted up, so a tall
       // invoice (e.g. with an EMI schedule) flows onto a 2nd/3rd page instead
@@ -263,7 +271,8 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (viewMode === 'bw') printCashMemo(invoice, settings, 'bw', installmentPlan, wholesaleBalance);
+    else window.print();
   };
 
   return (
@@ -284,7 +293,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Official pad invoice layout with multi-format PDF export options
+                A4 cash memo for printing, plus a colour copy and PDF export
               </p>
             </div>
           </div>
@@ -300,7 +309,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              Black & White Pad
+              A4 Cash Memo
             </button>
             <button
               onClick={() => setViewMode('color')}
@@ -333,7 +342,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   settings,
                   viewMode,
                   installmentPlan,
-                  isWholesale ? { previousBalance, closingBalance } : undefined
+                  wholesaleBalance
                 )
               }
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
@@ -375,224 +384,10 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
         {/* Scrollable Receipt Body */}
         <div className="p-6 overflow-y-auto bg-slate-100/70 space-y-8 flex-1 print:p-0 print:bg-white print:overflow-visible">
 
-          {/* ==================================================================== */}
-          {/* OPTION 1: BLACK & WHITE OFFICIAL SHOWROOM PAD INVOICE (1:1 MATCH)    */}
-          {/* ==================================================================== */}
-          <div
-            id="printable-receipt-bw"
-            style={{ backgroundColor: '#ffffff', color: '#000000' }}
-            className={`p-8 rounded-2xl shadow-sm border border-slate-300 relative font-sans print:p-6 print:border-none print:shadow-none ${
-              viewMode === 'bw' ? 'block print:block' : 'hidden print:hidden'
-            }`}
-          >
-            {/* Watermark Logo in Center Background */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none select-none">
-              <ElectroMartEmblem isMonochrome className="w-96 h-96" />
-            </div>
-
-            {/* Top Religious Header */}
-            <div className="text-center mb-1">
-              <p className="text-xs font-bold text-slate-900 font-serif tracking-wide">
-                বিসমিল্লাহির রাহমানির রাহিম
-              </p>
-            </div>
-
-            {/* Main Showroom Header */}
-            <div className="text-center relative border-b-2 border-black pb-4 mb-4">
-              <div className="flex items-center justify-center gap-3">
-                <ElectroMartEmblem isMonochrome className="w-10 h-10 shrink-0" />
-                <h1 className="text-2xl font-black uppercase tracking-tight text-black">
-                  {brandTitle}
-                </h1>
-              </div>
-
-              <p className="text-xs font-bold tracking-wide uppercase text-slate-900 mt-0.5">
-                {partnerTitle}
-              </p>
-
-              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 text-[11px] font-bold text-slate-900">
-                <span>{binNumber}</span>
-                <span>•</span>
-                <span>{brandAddress}</span>
-              </div>
-
-              <div className="mt-0.5 text-[11px] font-bold text-slate-900">
-                Mobile: {brandPhone}
-              </div>
-
-              {/* Sl No & Date Box */}
-              <div className="mt-3 pt-2 border-t border-dashed border-slate-400 flex justify-between items-center text-xs font-bold font-mono">
-                <div>
-                  SL No : <span className="text-sm px-2 py-0.5 border border-black font-extrabold" style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#000000' }}>{invoice.id}</span>
-                </div>
-                <div>
-                  Date : <span className="underline decoration-dotted">{formatDate(invoice.createdAt)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Block */}
-            <div className="border border-black p-3 mb-4 text-xs font-bold space-y-1.5" style={{ backgroundColor: '#f8fafc', color: '#000000', borderColor: '#000000' }}>
-              <div className="flex flex-col sm:flex-row justify-between gap-2">
-                <div className="flex-1">
-                  Name : <span className="font-semibold text-slate-900 border-b border-black border-dotted px-1 min-w-[200px] inline-block">{invoice.customerName}</span>
-                </div>
-                <div>
-                  Phone : <span className="font-semibold text-slate-900 border-b border-black border-dotted px-1 min-w-[140px] inline-block">{invoice.customerPhone}</span>
-                </div>
-              </div>
-              <div>
-                Address : <span className="font-semibold text-slate-900 border-b border-black border-dotted px-1 w-full inline-block">{invoice.customerAddress || 'Showroom Counter Purchase'}</span>
-              </div>
-            </div>
-
-            {/* Main Products Grid Table */}
-            <div className="overflow-x-auto mb-4">
-              <table className="w-full text-left text-xs border-collapse border-2 border-black" style={{ backgroundColor: '#ffffff' }}>
-                <thead>
-                  <tr className="text-black font-extrabold uppercase border-b-2 border-black text-center" style={{ backgroundColor: '#e2e8f0', color: '#000000' }}>
-                    <th className="p-2 border-r border-black w-12">SL. No.</th>
-                    <th className="p-2 border-r border-black text-left">Description</th>
-                    <th className="p-2 border-r border-black w-14 text-center">Qty</th>
-                    <th className="p-2 border-r border-black w-24 text-right">Unit Price</th>
-                    <th className="p-2 w-28 text-right">Amount (BDT)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y border-black font-medium">
-                  {invoice.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-black min-h-[36px]" style={{ backgroundColor: '#ffffff', color: '#000000' }}>
-                      <td className="p-2 border-r border-black text-center font-bold font-mono">
-                        {idx + 1}
-                      </td>
-                      <td className="p-2 border-r border-black">
-                        <div className="font-extrabold text-sm text-black uppercase">
-                          {item.productName}
-                          {capacitySuffix(item.productName, item.capacity) ? ` — ${capacitySuffix(item.productName, item.capacity)}` : ''}
-                        </div>
-                        {item.includeInstallationFee && (item.installationFee || item.extraPipingFee) ? (
-                          <div className="text-[10px] font-bold text-slate-700 mt-0.5">
-                            + Installation Fee: ৳{(item.installationFee || 0).toLocaleString()}
-                            {item.extraPipingFt ? ` (${item.extraPipingFt}ft extra piping @ ৳${item.extraPipingFee})` : ''}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="p-2 border-r border-black text-center font-mono font-bold">
-                        {item.quantity}
-                      </td>
-                      <td className="p-2 border-r border-black text-right font-mono font-bold">
-                        ৳{item.unitPrice.toLocaleString()}
-                      </td>
-                      <td className="p-2 text-right font-mono font-extrabold text-black">
-                        ৳{item.total.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Summary Rows Inside Table (matching attached invoice pad structure) */}
-                  <tr className="border-t-2 border-black" style={{ backgroundColor: '#f8fafc', color: '#000000' }}>
-                    <td colSpan={3} className="p-2 border-r border-black font-bold">
-                      Model: <span className="font-normal font-mono">{itemModels || 'Standard Showroom Spec'}</span>
-                    </td>
-                    <td className="p-2 border-r border-black font-bold text-right">Subtotal:</td>
-                    <td className="p-2 text-right font-mono font-bold">৳{invoice.subtotal.toLocaleString()}</td>
-                  </tr>
-
-                  {invoice.discountTotal > 0 && (
-                    <tr style={{ backgroundColor: '#f8fafc', color: '#000000' }}>
-                      <td colSpan={3} className="p-2 border-r border-black font-bold text-xs">
-                        Sl. No: <span className="font-normal font-mono">{itemSerials || 'Verified at Delivery'}</span>
-                      </td>
-                      <td className="p-2 border-r border-black font-bold text-right">Less Discount:</td>
-                      <td className="p-2 text-right font-mono font-bold text-slate-800">-৳{invoice.discountTotal.toLocaleString()}</td>
-                    </tr>
-                  )}
-
-                  <tr className="border-t-2 border-black text-black font-extrabold text-sm" style={{ backgroundColor: '#f1f5f9', color: '#000000' }}>
-                    <td colSpan={3} className="p-2 border-r border-black text-[11px] font-bold">
-                      N.B. Goods Once Sold Are Not Refundable
-                    </td>
-                    <td className="p-2 border-r border-black text-right font-bold uppercase text-xs">Total Tk.</td>
-                    <td className="p-2 text-right font-mono text-base font-black">
-                      ৳{invoice.grandTotal.toLocaleString()}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Payment Balance Summary & Taka in Words */}
-            <div className="space-y-3 border-b-2 border-black pb-4 mb-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 text-xs font-bold">
-                <div className="flex-1 p-2.5 border border-black rounded-xs" style={{ backgroundColor: '#f8fafc', color: '#000000', borderColor: '#000000' }}>
-                  <span className="uppercase text-slate-700 block text-[10px] tracking-wider font-extrabold">
-                    Taka (in words) :
-                  </span>
-                  <span className="text-sm font-extrabold font-serif italic text-black">
-                    {numberToWordsBDT(invoice.grandTotal)}
-                  </span>
-                </div>
-
-                <div className="w-full sm:w-64 border border-black p-2 space-y-1 font-mono text-xs" style={{ backgroundColor: '#f8fafc', color: '#000000', borderColor: '#000000' }}>
-                  <div className="flex justify-between">
-                    <span>Paid Amount:</span>
-                    <span>৳{invoice.paidAmount.toLocaleString()}</span>
-                  </div>
-                  {invoice.paymentSplits && invoice.paymentSplits.length > 1 && (
-                    <div className="border-t border-black pt-1 space-y-0.5">
-                      {invoice.paymentSplits.map((s, i) => (
-                        <div key={i} className="flex justify-between text-[10px]">
-                          <span>• {paymentModeLabel(s.paymentMode)}:</span>
-                          <span>৳{s.amount.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {invoice.dueAmount > 0 ? (
-                    <div className="flex justify-between text-black font-black border-t border-black pt-1">
-                      <span>Due Balance:</span>
-                      <span>৳{invoice.dueAmount.toLocaleString()}</span>
-                    </div>
-                  ) : (
-                    <div className="text-right text-[11px] font-black uppercase text-black border-t border-black pt-1">
-                      *** PAID IN FULL ***
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Installment / EMI Schedule (only for EMI sales) */}
-            {renderWholesaleSummary('bw')}
-
-            {renderInstallmentSchedule('bw')}
-
-            {/* Authorised & Customer Signatures */}
-            <div className="pt-10 flex justify-between items-end text-xs font-bold text-black mb-8">
-              <div className="text-center">
-                <div className="border-b-2 border-black w-44 mb-1"></div>
-                <p className="uppercase">Customer's Signature</p>
-              </div>
-
-              <div className="text-center">
-                <p className="text-[10px] text-slate-700 font-mono mb-1">
-                  Served by: {invoice.createdByStaffName || 'Authorized Staff'}
-                </p>
-                <div className="border-b-2 border-black w-48 mb-1"></div>
-                <p className="uppercase font-black">Authorised Signature</p>
-                <p className="text-[10px] text-slate-700">{brandTitle}</p>
-              </div>
-            </div>
-
-            {/* Footer Logos Bar (KONKA, GREE, HAIKO) */}
-            <div className="border-t-2 border-black pt-3 mt-4">
-              <div className={`grid ${isElectronics ? 'grid-cols-3' : 'grid-cols-4'} gap-2 items-center text-center`}>
-                <KonkaLogo isMonochrome />
-                <GreeLogo isMonochrome />
-                <HaikoLogo isMonochrome />
-                {!isElectronics && <HaierLogo isMonochrome />}
-              </div>
-            </div>
-
+          {/* A4 cash memo — same template the print and PDF export use */}
+          <div className={`w-fit max-w-full overflow-x-auto mx-auto shadow-sm border border-slate-300 ${viewMode === 'bw' ? 'block' : 'hidden'}`}>
+            <style>{cashMemo.css}</style>
+            <div id="printable-receipt-bw" className="cm-sheet" dangerouslySetInnerHTML={{ __html: cashMemo.html }} />
           </div>
 
           {/* ==================================================================== */}
