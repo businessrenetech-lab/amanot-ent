@@ -1172,7 +1172,7 @@ export const GlobalReportsView: React.FC = () => {
       </div>
 
       {/* Overview KPI Summary (above the date filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net Sales Revenue</p>
           <p className="text-2xl font-black text-slate-900 font-mono mt-1">৳{netRevenue.toLocaleString()}</p>
@@ -1235,12 +1235,12 @@ export const GlobalReportsView: React.FC = () => {
 
         {/* Right: report selector dropdown + export PDF (aligned in same row) */}
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Filter className="w-3.5 h-3.5 text-white/80 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={selectedReportType}
               onChange={(e) => setSelectedReportType(e.target.value as any)}
-              className="appearance-none bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl pl-9 pr-9 py-2.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400 transition min-w-[220px]"
+              className="appearance-none bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl pl-9 pr-9 py-2.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400 transition w-full sm:w-auto sm:min-w-[220px]"
             >
               {[
                 { id: 'profit_loss', label: '1. Profit & Loss Statement' },
@@ -2548,7 +2548,7 @@ export const GlobalReportsView: React.FC = () => {
 
       {/* EXPENSE VOUCHER AUDIT MODAL */}
       {selectedExpenseVoucher && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="modal-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
@@ -2645,7 +2645,7 @@ export const GlobalReportsView: React.FC = () => {
           </div>
 
           {/* Collection KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
               <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Period EMI Recovered</p>
               <p className="text-2xl font-black text-emerald-900 font-mono mt-1">৳{periodEmiCollectionTotal.toLocaleString()}</p>
@@ -2793,7 +2793,7 @@ export const GlobalReportsView: React.FC = () => {
           </div>
 
           {/* Headline figures */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
               <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Actual Sales (Regular)</p>
               <p className="text-2xl font-black text-blue-900 font-mono mt-1">৳{referralTotals.regularRevenue.toLocaleString()}</p>

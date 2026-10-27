@@ -155,7 +155,7 @@ export const CustomerReturnModal: React.FC<CustomerReturnModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 to-slate-900 px-6 py-4 flex items-center justify-between text-white">
@@ -214,9 +214,9 @@ export const CustomerReturnModal: React.FC<CustomerReturnModalProps> = ({
               {returnItems.map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-12 gap-2 items-center text-xs"
+                  className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-6 sm:grid-cols-12 gap-2 items-center text-xs"
                 >
-                  <div className="col-span-4">
+                  <div className="col-span-5 sm:col-span-4 min-w-0">
                     <span className="font-extrabold text-slate-900 block truncate">{item.productName}</span>
                     <span className="text-[10px] text-slate-500">{item.brand} | {item.category}</span>
                   </div>
@@ -243,7 +243,7 @@ export const CustomerReturnModal: React.FC<CustomerReturnModalProps> = ({
                     />
                   </div>
 
-                  <div className="col-span-3">
+                  <div className="col-span-2 sm:col-span-3">
                     <label className="text-[10px] text-slate-500 block font-bold">Condition</label>
                     <select
                       value={item.condition}
@@ -257,7 +257,7 @@ export const CustomerReturnModal: React.FC<CustomerReturnModalProps> = ({
                     </select>
                   </div>
 
-                  <div className="col-span-1 flex items-center justify-end">
+                  <div className="col-span-1 row-start-1 col-start-6 sm:row-start-auto sm:col-start-auto flex items-center justify-end">
                     {returnItems.length > 1 && (
                       <button
                         type="button"

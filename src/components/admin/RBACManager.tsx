@@ -130,9 +130,9 @@ export const RBACManager: React.FC = () => {
           const isSelf = u.id === currentUser.id;
           const lockAdmin = u.role === 'super_admin';
           return (
-            <div key={u.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-              <div className="flex justify-between items-start border-b pb-3">
-                <div>
+            <div key={u.id} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+              <div className="flex flex-wrap justify-between items-start gap-3 border-b pb-3">
+                <div className="min-w-0">
                   <span
                     className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase mb-1 ${
                       u.role === 'super_admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
@@ -142,7 +142,7 @@ export const RBACManager: React.FC = () => {
                     {isSelf && ' • You'}
                   </span>
                   <h3 className="text-base font-black text-slate-900">{u.name}</h3>
-                  <p className="text-xs text-slate-500 font-mono">{u.email}</p>
+                  <p className="text-xs text-slate-500 font-mono break-all">{u.email}</p>
                 </div>
 
                 <div>
@@ -199,7 +199,7 @@ export const RBACManager: React.FC = () => {
 
       {/* Add Staff Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">

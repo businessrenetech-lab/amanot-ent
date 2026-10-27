@@ -769,7 +769,7 @@ export const InstallmentsView: React.FC = () => {
 
       {/* ================= "OPERATE & CONTROL INSTALLMENTS" MODAL ================= */}
       {controlPlan && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 my-auto max-h-[92vh] flex flex-col">
             
             {/* Control Header */}
@@ -1602,7 +1602,7 @@ export const InstallmentsView: React.FC = () => {
 
       {/* ================= PAYMENT COLLECTION SUB-MODAL ================= */}
       {collectingItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">

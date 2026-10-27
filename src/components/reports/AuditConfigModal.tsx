@@ -56,7 +56,7 @@ export const AuditConfigModal: React.FC<AuditConfigModalProps> = ({ onClose }) =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 animate-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center border-b pb-3 mb-4 sticky top-0 bg-white z-10">
           <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">

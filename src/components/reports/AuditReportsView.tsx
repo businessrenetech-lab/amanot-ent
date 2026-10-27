@@ -680,7 +680,7 @@ export const AuditReportsView: React.FC = () => {
         </div>
 
         {/* Super Admin Settings + Business Scope Selector (top right) */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:shrink-0">
           {isSuperAdmin && (
             <button
               onClick={() => setIsConfigModalOpen(true)}
@@ -690,22 +690,22 @@ export const AuditReportsView: React.FC = () => {
               Super Admin Settings
             </button>
           )}
-          <div className="flex items-center bg-slate-900 text-white p-1 rounded-xl text-xs font-bold">
+          <div className="grid grid-cols-3 sm:flex sm:items-center w-full sm:w-auto bg-slate-900 text-white p-1 rounded-xl text-xs font-bold">
             <button
               onClick={() => setBusinessScope('all')}
-              className={`px-3 py-1.5 rounded-lg transition ${businessScope === 'all' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg leading-tight transition ${businessScope === 'all' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Combined Global
             </button>
             <button
               onClick={() => setBusinessScope('amanot_electronics')}
-              className={`px-3 py-1.5 rounded-lg transition ${businessScope === 'amanot_electronics' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg leading-tight transition ${businessScope === 'amanot_electronics' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Amanot Electronics
             </button>
             <button
               onClick={() => setBusinessScope('amanot_enterprise')}
-              className={`px-3 py-1.5 rounded-lg transition ${businessScope === 'amanot_enterprise' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`px-2 sm:px-3 py-1.5 rounded-lg leading-tight transition ${businessScope === 'amanot_enterprise' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Amanot Enterprise
             </button>
@@ -714,7 +714,7 @@ export const AuditReportsView: React.FC = () => {
       </div>
 
       {/* Overview KPI Cards (above the date filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reported Tax Sales</p>
           <p className="text-xl font-black text-slate-900 font-mono mt-1">৳{auditRevenue.toLocaleString()}</p>
@@ -771,12 +771,12 @@ export const AuditReportsView: React.FC = () => {
 
         {/* Right: report selector dropdown + export PDF + print (aligned in same row) */}
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Filter className="w-3.5 h-3.5 text-white/80 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={auditTab}
               onChange={(e) => setAuditTab(e.target.value as any)}
-              className="appearance-none bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl pl-9 pr-9 py-2.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 transition min-w-[220px]"
+              className="appearance-none bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl pl-9 pr-9 py-2.5 shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 transition w-full sm:w-auto sm:min-w-[220px]"
             >
               {[
                 { id: 'profit_loss', label: '1. Tax Profit & Loss Statement' },

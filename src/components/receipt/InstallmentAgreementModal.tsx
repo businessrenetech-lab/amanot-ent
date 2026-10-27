@@ -75,7 +75,7 @@ export const InstallmentAgreementModal: React.FC<InstallmentAgreementModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-3 overflow-y-auto print:p-0 print:bg-white print:static">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-3 overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 print:shadow-none print:max-h-none print:w-full print:border-none print:rounded-none">
         
         {/* Top Control Bar (Hidden on Print) */}

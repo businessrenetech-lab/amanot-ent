@@ -4,6 +4,7 @@ import { RouterProvider, useRouter } from './router';
 import { canAccessTab, firstAllowedTab } from './auth/permissions';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileNav } from './components/layout/MobileNav';
 import { POSView } from './components/pos/POSView';
 import { InventoryView } from './components/inventory/InventoryView';
 import { InvoicesView } from './components/sales/InvoicesView';
@@ -26,7 +27,7 @@ const ToastHost: React.FC = () => {
   const { toastMessage } = useApp();
   if (!toastMessage) return null;
   return (
-    <div className="fixed bottom-6 right-6 z-[100] bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 animate-in fade-in slide-in-from-bottom-5 flex items-center gap-2">
+    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] inset-x-4 lg:inset-x-auto lg:bottom-6 lg:right-6 z-[100] bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 animate-in fade-in slide-in-from-bottom-5 flex items-center gap-2">
       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
       {toastMessage}
     </div>
@@ -112,10 +113,11 @@ const AdminApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 flex flex-col antialiased">
       <Header />
-      <div className="flex-1 flex w-full p-4 md:p-6 gap-6">
+      <div className="flex-1 flex w-full p-3 sm:p-4 lg:p-6 gap-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 min-w-0">{renderERPView()}</main>
       </div>
+      <MobileNav />
 
       {activeReceiptInvoice && (
         <BrandedReceiptModal

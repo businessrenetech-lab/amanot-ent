@@ -416,8 +416,116 @@ export const InventoryView: React.FC = () => {
         </div>
       )}
 
+      {/* Product cards (phones) */}
+      <div className="lg:hidden space-y-2.5">
+        <label className="flex items-center gap-2.5 px-1 text-xs font-bold text-slate-600">
+          <input
+            type="checkbox"
+            checked={isAllFilteredSelected}
+            onChange={toggleSelectAllFiltered}
+            className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+          />
+          Select all ({filteredProducts.length})
+        </label>
+        {filteredProducts.map((p) => {
+          const isElectronics = p.business === 'amanot_electronics';
+          const isLow = p.stockQty <= p.minStockAlert;
+          const isSelected = selectedProductIds.includes(p.id);
+          return (
+            <div
+              key={p.id}
+              className={`bg-white rounded-2xl border shadow-sm p-3 ${
+                isSelected ? 'border-amber-300 bg-amber-50/60' : 'border-slate-200'
+              }`}
+            >
+              <div className="flex gap-3">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelectProduct(p.id)}
+                  aria-label={`Select ${p.name}`}
+                  className="mt-1 w-4 h-4 rounded text-amber-600 focus:ring-amber-500 shrink-0"
+                />
+                <div className="w-14 h-14 bg-slate-100 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="w-full h-full object-contain p-0.5" referrerPolicy="no-referrer" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 text-sm leading-snug">{p.name}</p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${
+                        isElectronics ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      }`}
+                    >
+                      {p.brand}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-semibold">{p.category}</span>
+                    {p.isFeaturedOnWebsite && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">Featured</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">SKU: {p.sku}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                <div className="rounded-lg bg-slate-50 py-1.5">
+                  <p className="text-[9px] font-bold uppercase text-slate-400">Retail</p>
+                  <p className="text-xs font-mono font-bold text-slate-900">৳{p.retailPrice.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 py-1.5">
+                  <p className="text-[9px] font-bold uppercase text-slate-400">Wholesale</p>
+                  <p className="text-xs font-mono font-bold text-indigo-700">৳{p.wholesalePrice.toLocaleString()}</p>
+                </div>
+                <div className={`rounded-lg py-1.5 ${isLow ? 'bg-rose-50' : 'bg-emerald-50'}`}>
+                  <p className="text-[9px] font-bold uppercase text-slate-400">Stock</p>
+                  <p className={`text-xs font-mono font-extrabold flex items-center justify-center gap-1 ${isLow ? 'text-rose-700' : 'text-emerald-700'}`}>
+                    {p.stockQty} {p.unit}
+                    {isLow && <AlertTriangle className="w-3 h-3" />}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <p className="text-[10px] text-slate-500 font-mono">Cost ৳{p.costPrice.toLocaleString()}</p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setEditingProduct(p)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newQty = prompt(`Update stock quantity for ${p.name}:`, String(p.stockQty));
+                      if (newQty !== null) {
+                        updateProduct(p.id, { stockQty: Number(newQty) });
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold"
+                  >
+                    Adjust
+                  </button>
+                  <button
+                    onClick={() => deleteProduct(p.id)}
+                    aria-label={`Delete ${p.name}`}
+                    className="p-1.5 text-slate-400 hover:text-rose-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Product List Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">

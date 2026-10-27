@@ -307,7 +307,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full border border-slate-200 my-auto overflow-hidden animate-in zoom-in-95 max-h-[92vh] flex flex-col">
         
         {/* Header */}

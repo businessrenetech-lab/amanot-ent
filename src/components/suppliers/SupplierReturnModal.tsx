@@ -145,7 +145,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-slate-900 to-indigo-950 px-6 py-4 flex items-center justify-between text-white">
@@ -208,9 +208,9 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
               {returnItems.map((item, idx) => (
                 <div
                   key={idx}
-                  className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-12 gap-2 items-center"
+                  className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-6 sm:grid-cols-12 gap-2 items-center"
                 >
-                  <div className="col-span-5">
+                  <div className="col-span-6 sm:col-span-5">
                     <label className="text-[10px] text-slate-500 block mb-0.5 font-bold">Product</label>
                     <select
                       value={item.productId}
@@ -238,7 +238,7 @@ export const SupplierReturnModal: React.FC<SupplierReturnModalProps> = ({ onClos
                     />
                   </div>
 
-                  <div className="col-span-3">
+                  <div className="col-span-2 sm:col-span-3">
                     <label className="text-[10px] text-slate-500 block mb-0.5 font-bold">Unit Cost (৳)</label>
                     <input
                       type="number"

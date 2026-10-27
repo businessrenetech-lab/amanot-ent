@@ -127,6 +127,8 @@ export const POSView: React.FC = () => {
   const [saleNotes, setSaleNotes] = useState('');
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
   const [isCartExpanded, setIsCartExpanded] = useState(false);
+  // Phones show one POS panel at a time.
+  const [mobilePane, setMobilePane] = useState<'products' | 'checkout'>('products');
 
   // Drafts Modal state
   const [showDraftsModal, setShowDraftsModal] = useState<boolean>(false);
@@ -836,7 +838,7 @@ export const POSView: React.FC = () => {
       className={
         isMaximized
           ? 'fixed inset-0 z-50 bg-slate-950 text-slate-100 p-3 sm:p-4 overflow-hidden flex flex-col gap-3 font-sans animate-in fade-in duration-200'
-          : 'flex flex-col gap-3 font-sans h-[calc(100vh-6.5rem)] min-h-[600px] overflow-hidden'
+          : 'flex flex-col gap-3 font-sans h-[calc(100dvh-9.75rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[440px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[600px] overflow-hidden'
       }
     >
       {/* Maximized Fullscreen Top Bar Header */}
@@ -906,19 +908,50 @@ export const POSView: React.FC = () => {
         </div>
       )}
 
+      {/* Phone panel switcher */}
+      <div className="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-900 shrink-0 shadow-md" role="tablist">
+        <button
+          role="tab"
+          aria-selected={mobilePane === 'products'}
+          onClick={() => setMobilePane('products')}
+          className={`py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
+            mobilePane === 'products' ? 'bg-white text-slate-900 shadow' : 'text-slate-300'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" /> Products
+        </button>
+        <button
+          role="tab"
+          aria-selected={mobilePane === 'checkout'}
+          onClick={() => setMobilePane('checkout')}
+          className={`py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
+            mobilePane === 'checkout' ? 'bg-white text-slate-900 shadow' : 'text-slate-300'
+          }`}
+        >
+          <ShoppingCart className="w-3.5 h-3.5" /> Checkout
+          {cart.length > 0 && (
+            <span className="font-mono text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full">
+              {cart.length} · ৳{grandTotal.toLocaleString()}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Main Body Wrapper */}
       <div className="flex-1 flex flex-col lg:flex-row gap-3 lg:gap-4 min-h-0 overflow-hidden">
 
         {/* ============================= LEFT: Product Catalog ============================= */}
-        <div className={`flex-1 flex flex-col gap-3 min-h-0 overflow-hidden ${
+        <div className={`flex-1 flex-col gap-3 min-h-0 overflow-hidden ${
+          mobilePane === 'checkout' ? 'hidden lg:flex' : 'flex'
+        } ${
           isMaximized ? 'bg-slate-100 border border-slate-200 rounded-2xl p-3' : ''
         }`}>
 
           {/* Top Search & Filter Bar */}
           <div className={`${panelBg} p-3 rounded-2xl shadow-sm border space-y-2.5 shrink-0`}>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 sm:gap-2.5">
               {/* Search Input */}
-              <div className="relative flex-1 w-full">
+              <div className="relative w-full sm:w-auto sm:flex-1">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -962,7 +995,7 @@ export const POSView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowDraftsModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 font-bold text-xs rounded-xl border border-amber-500/30 transition shrink-0"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 font-bold text-xs rounded-xl border border-amber-500/30 transition shrink-0"
               >
                 <Clock className="w-4 h-4 text-amber-500" />
                 <span>Drafts ({draftInvoices.length})</span>
@@ -1136,7 +1169,9 @@ export const POSView: React.FC = () => {
         </div>
 
         {/* ============================= RIGHT: Checkout Terminal (Bright Light Theme) ============================= */}
-        <aside className="w-full lg:w-[400px] xl:w-[440px] bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col overflow-hidden shrink-0 min-h-0 text-slate-900">
+        <aside className={`w-full lg:w-[400px] xl:w-[440px] flex-1 lg:flex-none bg-white border border-slate-200 rounded-2xl shadow-xl flex-col overflow-hidden lg:shrink-0 min-h-0 text-slate-900 ${
+          mobilePane === 'products' ? 'hidden lg:flex' : 'flex'
+        }`}>
           {/* Terminal Header */}
           <div className="p-3 px-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-2">
@@ -1850,7 +1885,7 @@ export const POSView: React.FC = () => {
 
       {/* Saved Drafts Modal */}
       {showDraftsModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="modal-overlay fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-2">

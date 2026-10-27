@@ -476,7 +476,7 @@ export const AccountsView: React.FC = () => {
       </div>
 
       {/* Net Liquidity Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-sm border border-emerald-500/30">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-100">Main Cash Balances</span>
@@ -1004,7 +1004,7 @@ export const AccountsView: React.FC = () => {
 
       {/* MODAL 1: ADD / EDIT ACCOUNT */}
       {isAddAccountModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -1176,7 +1176,7 @@ export const AccountsView: React.FC = () => {
 
       {/* MODAL 2: INTERNAL ACCOUNT TRANSFER */}
       {isTransferModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
@@ -1301,7 +1301,7 @@ export const AccountsView: React.FC = () => {
 
       {/* MODAL 3: PAY SUPPLIER DUE */}
       {isSupplierPayModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">

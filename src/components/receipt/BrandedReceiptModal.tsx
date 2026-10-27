@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SaleInvoice } from '../../types';
 import {
@@ -50,6 +50,23 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   // Toggle between B&W Official Pad and Color Branded mode
   const [viewMode, setViewMode] = useState<'bw' | 'color'>('bw');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+
+  // Shrink the A4 preview to fit narrow screens (an A4 sheet is 210mm ≈ 794px wide).
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewZoom, setPreviewZoom] = useState(1);
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const fit = () => {
+      const cs = getComputedStyle(el);
+      const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+      setPreviewZoom(Math.min(1, room / 794));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [invoice]);
 
   if (!invoice) return null;
 
@@ -209,6 +226,8 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   // Download PDF helper (uses html2canvas for 1:1 visual fidelity)
   const downloadPDFMode = async (targetMode: 'bw' | 'color') => {
     setIsGeneratingPdf(true);
+    // Let the preview drop back to full size before it is captured.
+    await new Promise((res) => setTimeout(res, 120));
     const elementId = targetMode === 'bw' ? 'printable-receipt-bw' : 'printable-receipt-color';
     
     // Briefly switch viewMode if needed so DOM element is visible
@@ -276,17 +295,17 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[94vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 my-auto print:max-h-none print:shadow-none print:border-none print:rounded-none">
 
         {/* Top Control Header Bar (Hidden in Print) */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 print:hidden shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="relative bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-slate-800 print:hidden shrink-0">
+          <div className="flex items-center gap-3 min-w-0 pr-10 sm:pr-0">
             <span className="p-2 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
               <FileText className="w-5 h-5" />
             </span>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <h2 className="text-base font-extrabold tracking-tight">Customer Invoice #{invoice.id}</h2>
                 <span className="text-[10px] bg-slate-800 text-amber-400 px-2 py-0.5 rounded font-mono border border-slate-700">
                   {isElectronics ? 'Amanat Electronics' : 'Amanat Enterprise'}
@@ -299,10 +318,10 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
           </div>
 
           {/* Mode Switcher Buttons */}
-          <div className="bg-slate-800/80 p-1 rounded-xl border border-slate-700/80 flex items-center gap-1">
+          <div className="w-full sm:w-auto bg-slate-800/80 p-1 rounded-xl border border-slate-700/80 grid grid-cols-2 sm:flex sm:items-center gap-1">
             <button
               onClick={() => setViewMode('bw')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
                 viewMode === 'bw'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -313,7 +332,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             </button>
             <button
               onClick={() => setViewMode('color')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
                 viewMode === 'color'
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
@@ -325,10 +344,10 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex sm:items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+              className="justify-center whitespace-nowrap px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
               title="Print Active Invoice View"
             >
               <Printer className="w-4 h-4 text-slate-950" />
@@ -345,7 +364,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
                   wholesaleBalance
                 )
               }
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
+              className="justify-center whitespace-nowrap px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
               title="Export Vector PDF in New Tab"
             >
               <ExternalLink className="w-4 h-4 text-emerald-200" />
@@ -355,7 +374,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             <button
               disabled={isGeneratingPdf}
               onClick={() => downloadPDFMode('bw')}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-white text-slate-900 font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
+              className="justify-center whitespace-nowrap px-3.5 py-2 bg-slate-100 hover:bg-white text-slate-900 font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs"
               title="Download Black & White Pad PDF"
             >
               <Download className="w-4 h-4 text-slate-700" />
@@ -365,7 +384,7 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
             <button
               disabled={isGeneratingPdf}
               onClick={() => downloadPDFMode('color')}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
+              className="justify-center whitespace-nowrap px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md"
               title="Download Premium Color PDF"
             >
               <Download className="w-4 h-4 text-indigo-200" />
@@ -374,7 +393,8 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition"
+              aria-label="Close"
+              className="absolute top-3 right-3 sm:static p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition"
             >
               <X className="w-5 h-5" />
             </button>
@@ -382,10 +402,13 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
         </div>
 
         {/* Scrollable Receipt Body */}
-        <div className="p-6 overflow-y-auto bg-slate-100/70 space-y-8 flex-1 print:p-0 print:bg-white print:overflow-visible">
+        <div ref={previewRef} className="p-3 sm:p-6 overflow-y-auto bg-slate-100/70 space-y-8 flex-1 print:p-0 print:bg-white print:overflow-visible">
 
           {/* A4 cash memo — same template the print and PDF export use */}
-          <div className={`w-fit max-w-full overflow-x-auto mx-auto shadow-sm border border-slate-300 ${viewMode === 'bw' ? 'block' : 'hidden'}`}>
+          <div
+            style={{ zoom: isGeneratingPdf ? 1 : previewZoom }}
+            className={`w-fit mx-auto shadow-sm border border-slate-300 ${viewMode === 'bw' ? 'block' : 'hidden'}`}
+          >
             <style>{cashMemo.css}</style>
             <div id="printable-receipt-bw" className="cm-sheet" dangerouslySetInnerHTML={{ __html: cashMemo.html }} />
           </div>

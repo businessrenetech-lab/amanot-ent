@@ -282,7 +282,7 @@ export const SupplierRequisitionModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 md:p-6 overflow-y-auto">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 md:p-6 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 border border-slate-200 animate-in zoom-in-95 my-auto max-h-[92vh] flex flex-col">
         
         {/* Header */}

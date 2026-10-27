@@ -1617,7 +1617,7 @@ export const CustomerDetailDashboard: React.FC<Props> = ({ customer, onClose, on
       {/* MODAL: PAY INVOICE DUE */}
       {/* -------------------------------------------------------------------- */}
       {payDueModalInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-black text-base text-slate-900">
@@ -1710,7 +1710,7 @@ export const CustomerDetailDashboard: React.FC<Props> = ({ customer, onClose, on
       {/* MODAL: PAY EMI INSTALLMENT */}
       {/* -------------------------------------------------------------------- */}
       {payEmiModalPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-black text-base text-slate-900">

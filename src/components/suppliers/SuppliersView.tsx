@@ -728,7 +728,7 @@ export const SuppliersView: React.FC = () => {
       {activeSubTab === 'supplier_payments' && (
         <div className="space-y-6">
           {/* Summary Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-5 rounded-2xl shadow-sm">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-100 block">Total Supplier Payments</span>
               <p className="text-2xl font-black font-mono mt-2">৳{paymentMetrics.total.toLocaleString()}</p>
@@ -990,7 +990,7 @@ export const SuppliersView: React.FC = () => {
 
       {/* Modal 1: Add New Supplier */}
       {isAddSupplierModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 animate-in zoom-in-95">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
               <h3 className="font-extrabold text-base text-slate-900">Add New Distributor Supplier</h3>
@@ -1069,7 +1069,7 @@ export const SuppliersView: React.FC = () => {
 
       {/* Modal 2: Pay Purchase Order Due */}
       {selectedPODue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95 space-y-4">
             <div className="flex justify-between items-center border-b pb-2">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
@@ -1229,7 +1229,7 @@ export const SuppliersView: React.FC = () => {
 
       {/* Modal 3: Standalone Record / Edit Supplier Payment */}
       {isPaySupplierModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95 space-y-4">
             <div className="flex justify-between items-center border-b pb-2">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">

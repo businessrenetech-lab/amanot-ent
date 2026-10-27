@@ -403,7 +403,7 @@ export const QuotesView: React.FC = () => {
 
       {/* Add Quotation Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
               <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
@@ -515,7 +515,7 @@ export const QuotesView: React.FC = () => {
 
       {/* EDIT QUOTATION MODAL */}
       {isEditModalOpen && editingQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
@@ -735,7 +735,7 @@ export const QuotesView: React.FC = () => {
 
       {/* FORMAL PRINT / PDF QUOTATION MODAL */}
       {printQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">

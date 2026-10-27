@@ -305,7 +305,7 @@ export const ExpensesView: React.FC = () => {
       </div>
 
       {/* Overview KPI Cards (above the date filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Selected Outflow</p>
@@ -622,7 +622,7 @@ export const ExpensesView: React.FC = () => {
 
       {/* Record / Edit Expense Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 my-auto animate-in zoom-in-95 space-y-4">
             <div className="flex justify-between items-center border-b pb-2">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">

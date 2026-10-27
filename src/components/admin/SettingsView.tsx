@@ -77,8 +77,8 @@ export const SettingsView: React.FC = () => {
       <form onSubmit={handleSave} className="space-y-6 text-xs font-medium">
         
         {/* 1. Website Price Toggle (EXPLICIT USER REQUIREMENT) */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
             <div>
               <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 {showPrices ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-amber-600" />}
@@ -110,13 +110,13 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* 2. Alpha SMS API Settings */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
             <Smartphone className="w-4 h-4 text-blue-600" />
             Alpha SMS Gateway Integration Settings
           </h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="font-bold text-slate-700 block mb-1">Alpha SMS API Secret Key</label>
               <input
@@ -139,13 +139,13 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* 3. Outlet Branding */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
             <Building2 className="w-4 h-4 text-indigo-600" />
             Store Outlet Info for Branded Receipts
           </h2>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
               <p className="font-extrabold text-blue-900">Amanot Electronics Outlet</p>
               <div>
@@ -193,8 +193,8 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* 4. Financial Accounts Configuration */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <div className="flex justify-between items-center border-b pb-3">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
             <div>
               <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-blue-600" />
@@ -207,7 +207,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('accounts')}
-              className="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold rounded-xl text-xs flex items-center gap-1 transition"
+              className="self-start sm:self-auto shrink-0 px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold rounded-xl text-xs flex items-center gap-1 transition"
             >
               Open Full Accounts Ledger <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -229,7 +229,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         {/* Brand Logos (POS cards, storefront & receipts) */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div className="border-b pb-3">
             <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-blue-600" />

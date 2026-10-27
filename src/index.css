@@ -1,1 +1,95 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Phone layer for the ERP. Plain (unlayered) CSS so it wins over utilities.
+   --------------------------------------------------------------------------- */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 1023px) {
+  /* iOS zooms the page when a focused field is under 16px. */
+  main input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  main select,
+  main textarea,
+  [role='dialog'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  [role='dialog'] select,
+  [role='dialog'] textarea {
+    font-size: max(16px, 1em);
+  }
+  main select,
+  [role='dialog'] select {
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Summary/KPI card rows: two cards per row on phones instead of one. */
+@media (max-width: 639px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+  .kpi-grid > * {
+    min-width: 0;
+    padding: 0.875rem;
+  }
+  .kpi-grid :is(.text-xl, .text-2xl, .text-3xl) {
+    font-size: 1.05rem;
+    line-height: 1.35rem;
+    overflow-wrap: anywhere;
+  }
+  /* Decorative icon tiles beside the figure. */
+  .kpi-grid > * > :is(.w-10, .w-11, .w-12, .w-14):last-child {
+    display: none;
+  }
+}
+
+/* Pop-up windows become bottom sheets on phones. */
+@media screen and (max-width: 639px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow: hidden;
+  }
+  .modal-overlay > :not(.absolute) {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    animation: sheet-up 220ms ease-out;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay > * {
+    animation: none;
+  }
+}
+
+/* Sideways-scrolling chip/tab strips: swipe instead of squeezing labels. */
+@media (max-width: 1023px) {
+  .flex.overflow-x-auto > :is(button, a, label) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .flex.overflow-x-auto {
+    scrollbar-width: none;
+  }
+  .flex.overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+}

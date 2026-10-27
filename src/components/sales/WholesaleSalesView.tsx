@@ -602,7 +602,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const newBalance = Math.max(0, outstanding - (payAmount || 0));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="p-4 bg-slate-900 text-white flex items-center justify-between rounded-t-2xl">
           <h3 className="font-black text-sm flex items-center gap-2">

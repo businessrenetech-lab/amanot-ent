@@ -148,7 +148,7 @@ export const InstallmentReceiptModal: React.FC<InstallmentReceiptModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="modal-overlay fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in zoom-in-95">
         {/* Top Header Controls */}
         <div className="p-4 bg-slate-900 text-white flex justify-between items-center print:hidden">
