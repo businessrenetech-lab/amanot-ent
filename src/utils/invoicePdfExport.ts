@@ -266,14 +266,14 @@ const CASH_MEMO_CSS = `
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10.7mm;
+  gap: 16mm;
   margin-top: 4.1mm;
-  padding-top: 2.4mm;
+  padding-top: 3mm;
   border-top: 0.4pt solid var(--rule);
 }
-.cm-logos img { height: 6mm; width: auto; filter: grayscale(100%) contrast(140%); }
+.cm-logos img { height: 12mm; width: auto; filter: grayscale(100%) contrast(140%); }
 .cm-color .cm-logos img { filter: none; }
-.cm-logos b { font-size: 10.7pt; font-weight: 800; letter-spacing: 0.08em; }
+.cm-logos b { font-size: 16pt; font-weight: 800; letter-spacing: 0.08em; }
 .cm-printed { margin-top: 1.7mm; text-align: center; font-size: 7.7pt; color: var(--soft); }
 
 @media print {

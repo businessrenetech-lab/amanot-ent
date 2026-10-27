@@ -8169,6 +8169,7 @@ var DEFAULT_BRAND_LOGOS = {
 
 // src/constants/business.ts
 var AMANOT_ELECTRONICS_ADDRESS = "Opposite Z U Model Hospital, S. S. K Road, Feni, Bangladesh.";
+var AMANOT_PHONE = "01711-360121, 01712-727548";
 
 // src/data/initialData.ts
 var INITIAL_STAFF_USERS = [
@@ -8564,9 +8565,9 @@ var INITIAL_APP_SETTINGS = {
   alphaSmsSenderId: "AMANOT_BD",
   alphaSmsApiUrl: "https://api.alphasms.biz/api/v1/sendsms",
   currencySymbol: "BDT \u09F3",
-  amanotElectronicsPhone: "+880 1711-001122, +880 1819-223344",
+  amanotElectronicsPhone: AMANOT_PHONE,
   amanotElectronicsAddress: AMANOT_ELECTRONICS_ADDRESS,
-  amanotEnterprisePhone: "+880 1911-556677, +880 1612-889900",
+  amanotEnterprisePhone: AMANOT_PHONE,
   amanotEnterpriseAddress: "Showroom #4, Haier City Plaza, Stadium Market, Dhaka, Bangladesh",
   brandLogos: DEFAULT_BRAND_LOGOS
 };
