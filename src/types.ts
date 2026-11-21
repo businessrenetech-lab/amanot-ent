@@ -563,4 +563,7 @@ export interface AppSettings {
   // Brand logos shown on POS cards, storefront & receipts.
   // Keyed by lowercased brand name → image URL or base64 data URI.
   brandLogos?: Record<string, string>;
+  // Tags of bundled product catalogues already merged into this install
+  // (e.g. 'haier-hbl-2026-11'), so each import runs once.
+  catalogImports?: string[];
 }

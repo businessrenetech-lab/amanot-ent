@@ -17,9 +17,13 @@ import { closePool } from './db';
 const uniq = (arr: string[]) => Array.from(new Set(arr.filter(Boolean)));
 
 async function run(): Promise<void> {
-  const file = resolve(process.cwd(), 'src', 'data', 'electronicsProducts.json');
-  const products = JSON.parse(readFileSync(file, 'utf8')) as any[];
-  console.log(`Loaded ${products.length} products from ${file}`);
+  // Electronics + Amanat Enterprise's Haier catalogue: replacing with electronics
+  // alone would wipe the Haier products.
+  const files = ['electronicsProducts.json', 'haierProducts.json'].map((f) =>
+    resolve(process.cwd(), 'src', 'data', f)
+  );
+  const products = files.flatMap((f) => JSON.parse(readFileSync(f, 'utf8')) as any[]);
+  console.log(`Loaded ${products.length} products from ${files.join(', ')}`);
 
   // 1. Replace the entire products collection.
   await replaceCollection(COLLECTION_BY_KEY['products'], products);

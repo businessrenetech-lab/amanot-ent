@@ -10,8 +10,8 @@ export const SettingsView: React.FC = () => {
   const [senderId, setSenderId] = useState(settings.alphaSmsSenderId);
   const [elecAddress, setElecAddress] = useState(settings.amanotElectronicsAddress);
   const [elecPhone, setElecPhone] = useState(settings.amanotElectronicsPhone);
-  const [entAddress, setEntAddress] = useState(settings.amanotEnterpriseAddress);
-  const [entPhone, setEntPhone] = useState(settings.amanotEnterprisePhone);
+  const [entAddress] = useState(settings.amanotEnterpriseAddress);
+  const [entPhone] = useState(settings.amanotEnterprisePhone);
 
   // Brand logos (keyed by lowercased brand name)
   const [brandLogos, setBrandLogos] = useState<Record<string, string>>(settings.brandLogos || {});
@@ -170,13 +170,15 @@ export const SettingsView: React.FC = () => {
 
             <div className="space-y-2 p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
               <p className="font-extrabold text-emerald-900">Amanot Enterprise Outlet</p>
+              <p className="text-[10px] text-emerald-800">Fixed contact details, printed on every Enterprise invoice.</p>
               <div>
                 <label className="text-[10px] font-bold text-slate-500 block">Phones</label>
                 <input
                   type="text"
                   value={entPhone}
-                  onChange={(e) => setEntPhone(e.target.value)}
-                  className="w-full p-2 border rounded-lg bg-white"
+                  readOnly
+                  title="Fixed for Amanat Enterprise invoices"
+                  className="w-full p-2 border rounded-lg bg-slate-100 text-slate-600 cursor-not-allowed"
                 />
               </div>
               <div>
@@ -184,8 +186,9 @@ export const SettingsView: React.FC = () => {
                 <input
                   type="text"
                   value={entAddress}
-                  onChange={(e) => setEntAddress(e.target.value)}
-                  className="w-full p-2 border rounded-lg bg-white"
+                  readOnly
+                  title="Fixed for Amanat Enterprise invoices"
+                  className="w-full p-2 border rounded-lg bg-slate-100 text-slate-600 cursor-not-allowed"
                 />
               </div>
             </div>

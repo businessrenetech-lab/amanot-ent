@@ -88,29 +88,27 @@ export const HaikoLogo: React.FC<LogoProps> = ({ isMonochrome = true, className 
 };
 
 /**
- * HAIER Brand Logo
+ * HAIER Brand Logo (official wordmark, cropped from the HBL price lists)
  */
 export const HaierLogo: React.FC<LogoProps> = ({ isMonochrome = true, className = 'h-8' }) => {
-  const brandColor = isMonochrome ? '#000000' : '#005AAA';
+  const src = DEFAULT_BRAND_LOGOS['haier'];
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      <svg viewBox="0 0 210 45" className="h-6 w-auto shrink-0" style={{ maxHeight: '26px' }}>
-        {/* H */}
-        <path fill={brandColor} d="M5 5h11v14h18V5h11v35H34V25H16v15H5V5z" />
-        {/* A */}
-        <path fill={brandColor} d="M52 5h12l14 35H66l-2-6H56l-2 6H42L52 5zm10 20l-3-9-3 9h6z" />
-        {/* I */}
-        <path fill={brandColor} d="M82 5h11v35H82V5z" />
-        {/* E */}
-        <path fill={brandColor} d="M100 5h22v8h-12v5h10v7h-10v7h12v8h-22V5z" />
-        {/* R */}
-        <path fill={brandColor} d="M128 5h18c6 0 10 3 10 8 0 4-2 7-6 8l7 14h-12l-6-13h-5v13h-11V5zm11 10h6c2 0 3-1 3-3s-1-2-3-2h-6v5z" />
-      </svg>
+      {src ? (
+        <img
+          src={src}
+          alt="Haier"
+          className="h-9 w-auto object-contain max-h-[40px]"
+          style={{ filter: isMonochrome ? 'grayscale(100%) contrast(150%)' : 'none' }}
+        />
+      ) : (
+        <span className="font-black text-lg" style={{ color: isMonochrome ? '#000000' : '#005AAA' }}>Haier</span>
+      )}
       <span
         style={{ color: isMonochrome ? '#000000' : '#1e293b', fontSize: '8.5px', fontWeight: 800, marginTop: '2px', letterSpacing: '-0.2px' }}
       >
-        INSPIRED LIVING • AUTHORIZED PARTNER
+        EXCLUSIVE SHOWROOM
       </span>
     </div>
   );

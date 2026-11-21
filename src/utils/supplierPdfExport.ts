@@ -1,5 +1,9 @@
 import { SupplierRequisition, SupplierPayment } from '../types';
-import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
+import {
+  AMANOT_ELECTRONICS_ADDRESS,
+  AMANAT_ENTERPRISE_ADDRESS,
+  AMANAT_ENTERPRISE_PHONE
+} from '../constants/business';
 
 interface Settings {
   amanotElectronicsAddress?: string;
@@ -63,10 +67,10 @@ export function exportSupplierRequisitionPDF(req: SupplierRequisition, settings?
   const companyTag = isElectronics ? 'Official Distributor: Konka, Gree & Haiko' : 'Official Partner: Haier';
   const address = isElectronics
     ? settings?.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
-    : settings?.amanotEnterpriseAddress || 'Kallanpur Main Road, Dhaka-1216';
+    : AMANAT_ENTERPRISE_ADDRESS;
   const phone = isElectronics
     ? settings?.amanotElectronicsPhone || '+880 1871-186562 / 01711-000000'
-    : settings?.amanotEnterprisePhone || '+880 1871-186562';
+    : AMANAT_ENTERPRISE_PHONE;
 
   const html = `<!DOCTYPE html>
 <html>
@@ -351,10 +355,10 @@ export function exportSupplierPaymentVoucherPDF(sp: SupplierPayment, settings?: 
   const companyTag = isElectronics ? 'Official Distributor: Konka, Gree & Haiko' : 'Official Partner: Haier';
   const address = isElectronics
     ? settings?.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
-    : settings?.amanotEnterpriseAddress || 'Kallanpur Main Road, Dhaka-1216';
+    : AMANAT_ENTERPRISE_ADDRESS;
   const phone = isElectronics
     ? settings?.amanotElectronicsPhone || '+880 1871-186562 / 01711-000000'
-    : settings?.amanotEnterprisePhone || '+880 1871-186562';
+    : AMANAT_ENTERPRISE_PHONE;
 
   const amountInWords = numberToWordsBDT(sp.amount);
 

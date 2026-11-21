@@ -21,7 +21,12 @@ import jsPDF from 'jspdf';
 import { safeHtml2Canvas } from '../../utils/html2canvasFix';
 import { numberToWordsBDT } from '../../utils/numberToWords';
 import { buildCashMemo, exportCustomerInvoicePDF, printCashMemo } from '../../utils/invoicePdfExport';
-import { AMANOT_ELECTRONICS_ADDRESS, resolveBusinessPhone } from '../../constants/business';
+import {
+  AMANOT_ELECTRONICS_ADDRESS,
+  AMANAT_ENTERPRISE_ADDRESS,
+  AMANAT_ENTERPRISE_PHONE,
+  resolveBusinessPhone
+} from '../../constants/business';
 import { formatDate } from '../../utils/formatDate';
 import { capacitySuffix } from '../../utils/capacityLabel';
 import { paymentModeLabel } from '../../utils/paymentLabel';
@@ -215,10 +220,10 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
   const partnerTitle = isElectronics ? 'Channel partner of ELECTRO MART LIMITED' : 'Authorized Haier & Electronics Outlet';
   const brandAddress = isElectronics
     ? settings.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
-    : settings.amanotEnterpriseAddress || 'SSK Road, Feni Sadar, Feni.';
-  const brandPhone = resolveBusinessPhone(
-    isElectronics ? settings.amanotElectronicsPhone : settings.amanotEnterprisePhone
-  );
+    : AMANAT_ENTERPRISE_ADDRESS;
+  const brandPhone = isElectronics
+    ? resolveBusinessPhone(settings.amanotElectronicsPhone)
+    : AMANAT_ENTERPRISE_PHONE;
 
   const wholesaleBalance = isWholesale ? { previousBalance, closingBalance } : undefined;
   const cashMemo = buildCashMemo(invoice, settings, 'bw', installmentPlan, wholesaleBalance);
@@ -613,12 +618,17 @@ export const BrandedReceiptModal: React.FC<BrandedReceiptModalProps> = ({
 
             {/* Color Footer Logos Bar */}
             <div className="border-t border-slate-200 pt-4">
-              <div className={`grid ${isElectronics ? 'grid-cols-3' : 'grid-cols-4'} gap-2 items-center text-center`}>
-                <KonkaLogo />
-                <GreeLogo />
-                <HaikoLogo />
-                {!isElectronics && <HaierLogo />}
-              </div>
+              {isElectronics ? (
+                <div className="grid grid-cols-3 gap-2 items-center text-center">
+                  <KonkaLogo />
+                  <GreeLogo />
+                  <HaikoLogo />
+                </div>
+              ) : (
+                <div className="flex justify-center items-center text-center">
+                  <HaierLogo isMonochrome={false} />
+                </div>
+              )}
             </div>
 
           </div>

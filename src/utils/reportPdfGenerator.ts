@@ -1,7 +1,11 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AppSettings, BusinessType } from '../types';
-import { AMANOT_ELECTRONICS_ADDRESS } from '../constants/business';
+import {
+  AMANOT_ELECTRONICS_ADDRESS,
+  AMANAT_ENTERPRISE_ADDRESS,
+  AMANAT_ENTERPRISE_PHONE
+} from '../constants/business';
 
 export interface ReportSection {
   heading: string;
@@ -77,7 +81,7 @@ export const generateBrandedReportPDF = (options: ReportPdfOptions) => {
 
   let companyName = 'AMANOT GROUP (ELECTRONICS & ENTERPRISE)';
   let subHeaderLine = 'Authorized Outlets: Konka, Gree, Haiko & Haier Home Appliances';
-  let phoneLine = `Electronics: ${settings.amanotElectronicsPhone || 'N/A'} | Enterprise: ${settings.amanotEnterprisePhone || 'N/A'}`;
+  let phoneLine = `Electronics: ${settings.amanotElectronicsPhone || 'N/A'} | Enterprise: ${AMANAT_ENTERPRISE_PHONE}`;
   let addressLine = `${settings.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS}`;
 
   if (isElectronicsOnly) {
@@ -88,8 +92,8 @@ export const generateBrandedReportPDF = (options: ReportPdfOptions) => {
   } else if (isEnterpriseOnly) {
     companyName = 'AMANOT ENTERPRISE';
     subHeaderLine = 'Authorized Outlet for Haier Home Appliances';
-    phoneLine = `Phone: ${settings.amanotEnterprisePhone || 'N/A'}`;
-    addressLine = `Address: ${settings.amanotEnterpriseAddress || 'Rangpur, Bangladesh'}`;
+    phoneLine = `Phone: ${AMANAT_ENTERPRISE_PHONE}`;
+    addressLine = `Address: ${AMANAT_ENTERPRISE_ADDRESS}`;
   }
 
   doc.text(companyName, 14, 12);

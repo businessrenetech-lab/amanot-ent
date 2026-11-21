@@ -2,7 +2,12 @@ import { SaleInvoice, InstallmentPlan } from '../types';
 import { numberToWordsBDT } from './numberToWords';
 import { formatDate } from './formatDate';
 import { DEFAULT_BRAND_LOGOS } from '../data/brandLogos';
-import { AMANOT_ELECTRONICS_ADDRESS, resolveBusinessPhone } from '../constants/business';
+import {
+  AMANOT_ELECTRONICS_ADDRESS,
+  AMANAT_ENTERPRISE_ADDRESS,
+  AMANAT_ENTERPRISE_PHONE,
+  resolveBusinessPhone
+} from '../constants/business';
 import { paymentModeLabel } from './paymentLabel';
 
 interface Settings {
@@ -299,10 +304,10 @@ export function buildCashMemo(
     : 'Authorized Haier & Electronics Outlet';
   const brandAddress = isElectronics
     ? settings?.amanotElectronicsAddress || AMANOT_ELECTRONICS_ADDRESS
-    : settings?.amanotEnterpriseAddress || 'SSK Road, Feni Sadar, Feni.';
-  const brandPhone = resolveBusinessPhone(
-    isElectronics ? settings?.amanotElectronicsPhone : settings?.amanotEnterprisePhone
-  );
+    : AMANAT_ENTERPRISE_ADDRESS;
+  const brandPhone = isElectronics
+    ? resolveBusinessPhone(settings?.amanotElectronicsPhone)
+    : AMANAT_ENTERPRISE_PHONE;
 
   const hasSchedule = !!(installmentPlan && installmentPlan.schedule && installmentPlan.schedule.length);
   const title = invoice.isDraft ? 'Draft Memo' : wholesale || hasSchedule ? 'Invoice' : 'Cash Memo';
@@ -409,15 +414,19 @@ export function buildCashMemo(
     </section>`
       : '';
 
-  const logos = [
-    { key: 'konka', name: 'KONKA' },
-    { key: 'gree', name: 'GREE' },
-    { key: 'haiko', name: 'HAIKO' }
-  ]
+  // Electronics prints its three brands; Enterprise (Haier exclusive showroom) prints Haier only.
+  const logos = (
+    isElectronics
+      ? [
+          { key: 'konka', name: 'KONKA' },
+          { key: 'gree', name: 'GREE' },
+          { key: 'haiko', name: 'HAIKO' }
+        ]
+      : [{ key: 'haier', name: 'HAIER' }]
+  )
     .map(({ key, name }) =>
       DEFAULT_BRAND_LOGOS[key] ? `<img src="${DEFAULT_BRAND_LOGOS[key]}" alt="${name}" />` : `<b>${name}</b>`
     )
-    .concat(isElectronics ? [] : ['<b>HAIER</b>'])
     .join('');
 
   const now = new Date();

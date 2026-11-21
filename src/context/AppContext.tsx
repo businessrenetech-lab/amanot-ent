@@ -14,6 +14,19 @@ import {
 } from '../api/sync';
 import { findCustomerByPhone, normalizePhone } from '../utils/phone';
 import { maybePromoteVip } from '../utils/vip';
+import { withFixedEnterpriseContact } from '../constants/business';
+import { HAIER_PRODUCTS, mergeHaierCatalog, needsHaierImport, markHaierImported } from '../utils/haierCatalog';
+
+const addUnique = (list: string[], extra: string[]) => Array.from(new Set([...list, ...extra]));
+const HAIER_CATEGORIES = Array.from(new Set(HAIER_PRODUCTS.map((p) => p.category)));
+const savedSettingsNeedHaier = () => {
+  try {
+    const raw = localStorage.getItem('amanot_settings');
+    return needsHaierImport(raw ? JSON.parse(raw) : undefined);
+  } catch {
+    return true;
+  }
+};
 import {
   BusinessType,
   ERPTab,
@@ -370,7 +383,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeBusiness, setActiveBusiness] = useState<'all' | BusinessType>('all');
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('amanot_settings');
-    return saved ? JSON.parse(saved) : INITIAL_APP_SETTINGS;
+    // Haier catalogue is merged into products below whenever this tag is missing.
+    return withFixedEnterpriseContact(markHaierImported(saved ? JSON.parse(saved) : INITIAL_APP_SETTINGS));
   });
   const [auditConfig, setAuditConfig] = useState<AuditConfig>(() => {
     const saved = localStorage.getItem('amanot_audit_config');
@@ -379,7 +393,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [brands, setBrands] = useState<string[]>(() => {
     const saved = localStorage.getItem('amanot_brands');
-    if (saved) return JSON.parse(saved);
+    if (saved) return savedSettingsNeedHaier() ? addUnique(JSON.parse(saved), ['Haier']) : JSON.parse(saved);
     const defaults = ['Gree', 'Konka', 'Haiko', 'Haier', 'Singer', 'Samsung', 'Walton', 'LG', 'Vision', 'Chigo'];
     const fromProducts = INITIAL_PRODUCTS.map((p) => p.brand);
     return Array.from(new Set([...defaults, ...fromProducts]));
@@ -387,7 +401,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [categories, setCategories] = useState<string[]>(() => {
     const saved = localStorage.getItem('amanot_categories');
-    if (saved) return JSON.parse(saved);
+    if (saved) return savedSettingsNeedHaier() ? addUnique(JSON.parse(saved), HAIER_CATEGORIES) : JSON.parse(saved);
     const defaults = ['Inverter AC', 'Smart LED TV', 'Refrigerator', 'Washing Machine', 'Deep Fridge', 'Microwave Oven', 'Home Appliance'];
     const fromProducts = INITIAL_PRODUCTS.map((p) => p.category);
     return Array.from(new Set([...defaults, ...fromProducts]));
@@ -536,7 +550,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('amanot_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+    if (!saved) return INITIAL_PRODUCTS;
+    const list: Product[] = JSON.parse(saved);
+    return savedSettingsNeedHaier() ? mergeHaierCatalog(list).products : list;
   });
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('amanot_customers');
@@ -643,14 +659,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyPublicCatalog = (cat: any) => {
     if (!cat) return;
     if (cat.products) setProducts(cat.products);
-    if (cat.settings) setSettings(cat.settings);
+    if (cat.settings) setSettings(withFixedEnterpriseContact(cat.settings));
     applyMasterLists(cat.masterLists);
   };
 
   const applyFullState = (state: any) => {
     if (!state) return;
+    // One-time merge of the bundled Haier catalogue into Amanat Enterprise.
+    const importHaier = needsHaierImport(state.settings);
     if (state.staffUsers) setStaffUsers(state.staffUsers);
-    if (state.products) setProducts(state.products);
+    if (state.products) setProducts(importHaier ? mergeHaierCatalog(state.products).products : state.products);
     if (state.customers) setCustomers(state.customers);
     if (state.suppliers) setSuppliers(state.suppliers);
     if (state.sales) setSales(state.sales);
@@ -668,9 +686,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (state.damageLogs) setDamageLogs(state.damageLogs);
     if (state.supplierReturns) setSupplierReturns(state.supplierReturns);
     if (state.customerReturns) setCustomerReturns(state.customerReturns);
-    if (state.settings) setSettings(state.settings);
+    if (state.settings) {
+      setSettings(withFixedEnterpriseContact(importHaier ? markHaierImported(state.settings) : state.settings));
+    }
     if (state.auditConfig) setAuditConfig(state.auditConfig);
     applyMasterLists(state.masterLists);
+    if (importHaier) {
+      setBrands((prev) => addUnique(prev, ['Haier']));
+      setCategories((prev) => addUnique(prev, HAIER_CATEGORIES));
+    }
   };
 
   useEffect(() => {
@@ -1069,7 +1093,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [categories]);
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => withFixedEnterpriseContact({ ...prev, ...newSettings }));
     showToast('System settings updated successfully');
   };
 

@@ -19,8 +19,14 @@ import {
 // Amanot Electronics catalogue generated from the official price list.
 // Regenerate with: node scripts/generate-electronics.mjs
 import electronicsProducts from './electronicsProducts.json';
+import haierProducts from './haierProducts.json';
 import { DEFAULT_BRAND_LOGOS } from './brandLogos';
-import { AMANOT_ELECTRONICS_ADDRESS, AMANOT_PHONE } from '../constants/business';
+import {
+  AMANOT_ELECTRONICS_ADDRESS,
+  AMANOT_PHONE,
+  AMANAT_ENTERPRISE_ADDRESS,
+  AMANAT_ENTERPRISE_PHONE
+} from '../constants/business';
 
 export const INITIAL_STAFF_USERS: StaffUser[] = [
   {
@@ -73,7 +79,10 @@ export const INITIAL_STAFF_USERS: StaffUser[] = [
   }
 ];
 
-export const INITIAL_PRODUCTS: Product[] = electronicsProducts as unknown as Product[];
+export const INITIAL_PRODUCTS: Product[] = [
+  ...(electronicsProducts as unknown as Product[]),
+  ...(haierProducts as unknown as Product[])
+];
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
@@ -425,8 +434,8 @@ export const INITIAL_APP_SETTINGS: AppSettings = {
   currencySymbol: 'BDT ৳',
   amanotElectronicsPhone: AMANOT_PHONE,
   amanotElectronicsAddress: AMANOT_ELECTRONICS_ADDRESS,
-  amanotEnterprisePhone: AMANOT_PHONE,
-  amanotEnterpriseAddress: 'Showroom #4, Haier City Plaza, Stadium Market, Dhaka, Bangladesh',
+  amanotEnterprisePhone: AMANAT_ENTERPRISE_PHONE,
+  amanotEnterpriseAddress: AMANAT_ENTERPRISE_ADDRESS,
   brandLogos: DEFAULT_BRAND_LOGOS
 };
 

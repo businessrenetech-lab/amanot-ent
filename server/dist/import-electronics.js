@@ -270,9 +270,11 @@ async function setSingleton(name, data, exec) {
 // server/src/import-electronics.ts
 var uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
 async function run() {
-  const file = resolve(process.cwd(), "src", "data", "electronicsProducts.json");
-  const products = JSON.parse(readFileSync(file, "utf8"));
-  console.log(`Loaded ${products.length} products from ${file}`);
+  const files = ["electronicsProducts.json", "haierProducts.json"].map(
+    (f) => resolve(process.cwd(), "src", "data", f)
+  );
+  const products = files.flatMap((f) => JSON.parse(readFileSync(f, "utf8")));
+  console.log(`Loaded ${products.length} products from ${files.join(", ")}`);
   await replaceCollection(COLLECTION_BY_KEY["products"], products);
   console.log(`\u2713 products collection replaced (${products.length} rows)`);
   const existingBrands = await getSingleton("brands") || [];
