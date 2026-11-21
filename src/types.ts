@@ -11,6 +11,7 @@ export type PaymentMode =
   | 'bank_transfer';
 
 export type ERPTab =
+  | 'dashboard'
   | 'pos'
   | 'inventory'
   | 'invoices'

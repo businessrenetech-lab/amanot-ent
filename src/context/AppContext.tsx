@@ -370,7 +370,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentMode, setCurrentMode] = useState<'website' | 'erp'>('erp');
-  const [activeTab, setActiveTab] = useState<ERPTab>('pos');
+  const [activeTab, setActiveTab] = useState<ERPTab>('dashboard');
   const [editingSaleInvoice, setEditingSaleInvoice] = useState<SaleInvoice | null>(null);
   const [posPrefill, setPosPrefill] = useState<{ customerId: string; priceType: 'retail' | 'wholesale' } | null>(null);
 

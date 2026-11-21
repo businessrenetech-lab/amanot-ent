@@ -7,7 +7,7 @@ import { getNavSections, NavMenu } from './Sidebar';
 import { BusinessScopeSelect, roleLabel } from './Header';
 
 // Screens most used at the counter; the first four the user may open become bottom tabs.
-const PRIMARY_TABS: ERPTab[] = ['pos', 'invoices', 'inventory', 'global_reports', 'audit_reports', 'crm', 'expenses'];
+const PRIMARY_TABS: ERPTab[] = ['dashboard', 'pos', 'invoices', 'inventory', 'global_reports', 'audit_reports', 'crm', 'expenses'];
 
 /** Phone/tablet navigation: a bottom tab bar plus a "More" sheet with the full menu. Hidden from lg up. */
 export const MobileNav: React.FC = () => {

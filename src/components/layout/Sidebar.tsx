@@ -16,6 +16,7 @@ import {
   Settings,
   PieChart,
   Landmark,
+  LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ export function getNavSections(user: StaffUser): NavSection[] {
     {
       title: 'Sell',
       items: [
+        { tab: 'dashboard', label: 'Overview', short: 'Home', Icon: LayoutDashboard, tint: '' },
         {
           tab: 'pos',
           label: 'POS',

@@ -6,6 +6,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { POSView } from './components/pos/POSView';
+import { DashboardView } from './components/dashboard/DashboardView';
 import { InventoryView } from './components/inventory/InventoryView';
 import { InvoicesView } from './components/sales/InvoicesView';
 import { QuotesView } from './components/quotes/QuotesView';
@@ -71,6 +72,8 @@ const AdminApp: React.FC = () => {
   const renderERPView = () => {
     if (!canAccessTab(activeTab, currentUser)) return <NoAccess />;
     switch (activeTab) {
+      case 'dashboard':
+        return <DashboardView />;
       case 'pos':
         return <POSView />;
       case 'inventory':

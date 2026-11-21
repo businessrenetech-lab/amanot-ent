@@ -8,6 +8,7 @@ type PermKey = keyof StaffUser['permissions'];
 
 // Which permission each tab requires. `null` = always available to any logged-in user.
 const TAB_PERMISSION: Record<ERPTab, PermKey | 'super_admin' | null> = {
+  dashboard: null,
   pos: 'canManagePOS',
   invoices: 'canManagePOS',
   quotes: 'canManagePOS',
@@ -36,6 +37,7 @@ export function canAccessTab(tab: ERPTab, user: StaffUser | null | undefined): b
 /** First tab the user is allowed to see (for a sensible default landing). */
 export function firstAllowedTab(user: StaffUser | null | undefined): ERPTab {
   const order: ERPTab[] = [
+    'dashboard',
     'pos',
     'inventory',
     'invoices',
