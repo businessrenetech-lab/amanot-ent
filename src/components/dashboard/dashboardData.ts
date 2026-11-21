@@ -190,6 +190,7 @@ export function buildDashboard(input: DashboardInput) {
     trend: trend.points,
     trendTotal: trend.total,
     trendCount: trend.count,
+    trendPrev: trend.prevTotal,
     dues: { total: owing.reduce((t, c) => t + c.currentDue, 0), count: owing.length },
     stock: {
       units,
@@ -261,10 +262,24 @@ function buildTrend(sales: SaleInvoice[], now: Date, range: Range) {
     }
   }
   const idx = new Map(points.map((p, i) => [p.key, i]));
+  // The window just before this one, same length, for comparison.
+  const prevKeys = new Set<string>();
+  if (range === '12m') {
+    for (let i = 23; i >= 12; i--) prevKeys.add(monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+  } else {
+    const days = range === '14d' ? 14 : 30;
+    for (let i = 2 * days - 1; i >= days; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      prevKeys.add(dayKey(d));
+    }
+  }
+  let prevTotal = 0;
   let total = 0;
   let count = 0;
   for (const s of sales) {
     const k = range === '12m' ? monthKey(s.createdAt) : dayKey(s.createdAt);
+    if (prevKeys.has(k)) prevTotal += netOf(s);
     const i = idx.get(k);
     if (i === undefined) continue;
     const v = netOf(s);
@@ -273,5 +288,5 @@ function buildTrend(sales: SaleInvoice[], now: Date, range: Range) {
     total += v;
     count += 1;
   }
-  return { points, total, count };
+  return { points, total, count, prevTotal };
 }
