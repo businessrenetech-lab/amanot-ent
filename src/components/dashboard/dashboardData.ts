@@ -125,6 +125,7 @@ export function buildDashboard(input: DashboardInput) {
 
   // Trend
   const trend = buildTrend(sales, now, input.range);
+  const spark = buildTrend(sales, now, '14d').points;
 
   // Stock
   let units = 0;
@@ -191,6 +192,7 @@ export function buildDashboard(input: DashboardInput) {
     trendTotal: trend.total,
     trendCount: trend.count,
     trendPrev: trend.prevTotal,
+    spark,
     dues: { total: owing.reduce((t, c) => t + c.currentDue, 0), count: owing.length },
     stock: {
       units,

@@ -43,22 +43,6 @@ const tkShort = (n: number) => {
 // ---------------------------------------------------------------------------
 // Small building blocks
 // ---------------------------------------------------------------------------
-const Card: React.FC<{ title?: string; action?: React.ReactNode; className?: string; children: React.ReactNode }> = ({
-  title,
-  action,
-  className = '',
-  children
-}) => (
-  <section className={`bg-white border rounded-xl p-5 min-w-0 ${className}`} style={{ borderColor: C.line }}>
-    {(title || action) && (
-      <div className="flex items-center justify-between gap-3 mb-4">
-        {title && <h2 className="text-[15px] font-semibold" style={{ color: C.ink }}>{title}</h2>}
-        {action}
-      </div>
-    )}
-    {children}
-  </section>
-);
 
 const LinkButton: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
   <button
@@ -255,53 +239,89 @@ const SplitBar: React.FC<{ parts: { business: BusinessType; value: number }[]; f
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
-const Kpi: React.FC<{ label: string; value: string; sub?: React.ReactNode; onClick?: () => void; className?: string }> = ({
-  label,
-  value,
-  sub,
-  onClick,
-  className = ''
-}) => {
-  const body = (
-    <>
-      <p className="text-[13px]" style={{ color: C.muted }}>{label}</p>
-      <p className="mt-1 text-[22px] xl:text-[24px] leading-tight font-semibold tracking-tight" style={{ color: C.ink }}>
-        {value}
-      </p>
-      {sub && <p className="mt-1 text-[12.5px] leading-snug">{sub}</p>}
-    </>
-  );
-  return onClick ? (
-    <button onClick={onClick} className={`text-left px-5 py-4 min-w-0 hover:bg-[#FAFAFB] transition-colors ${className}`}>
-      {body}
-    </button>
-  ) : (
-    <div className={`px-5 py-4 min-w-0 ${className}`}>{body}</div>
+
+/** Smooth area line for the Today panel. Decorative summary; numbers are in text beside it. */
+const Spark: React.FC<{ values: number[]; labels: string[] }> = ({ values, labels }) => {
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 600;
+  const H = 120;
+  const max = Math.max(...values, 1);
+  const pts = values.map((v, i) => [(i / Math.max(1, values.length - 1)) * W, H - 8 - (v / max) * (H - 24)] as const);
+  const path = pts.reduce((acc, [x, y], i) => {
+    if (i === 0) return `M${x},${y}`;
+    const [px, py] = pts[i - 1];
+    const cx = (px + x) / 2;
+    return `${acc} C${cx},${py} ${cx},${y} ${x},${y}`;
+  }, '');
+  const area = `${path} L${W},${H} L0,${H} Z`;
+  const last = pts[pts.length - 1];
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-[96px] sm:h-[120px]" aria-hidden>
+        <defs>
+          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4F53C8" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#4F53C8" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#sparkFill)" />
+        <path d={path} fill="none" stroke="#4F53C8" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        {hover !== null && (
+          <line x1={pts[hover][0]} x2={pts[hover][0]} y1={0} y2={H} stroke="#C9CBF0" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        )}
+        {values.map((_, i) => (
+          <rect
+            key={i}
+            x={pts[i][0] - W / values.length / 2}
+            y={0}
+            width={W / values.length}
+            height={H}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+          />
+        ))}
+      </svg>
+      <span
+        className="absolute w-2.5 h-2.5 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2"
+        style={{ left: `${(last[0] / W) * 100}%`, top: `${(last[1] / H) * 100}%`, background: '#4F53C8' }}
+        aria-hidden
+      />
+      {hover !== null && (
+        <div
+          className="pointer-events-none absolute -top-2 -translate-x-1/2 -translate-y-full bg-[#16181D] text-white rounded-md px-2.5 py-1.5 text-[12px] whitespace-nowrap"
+          style={{ left: `${(pts[hover][0] / W) * 100}%` }}
+        >
+          {labels[hover]}: {tk(values[hover])}
+        </div>
+      )}
+    </div>
   );
 };
 
-const AttentionRow: React.FC<{
-  label: string;
-  detail: string;
-  value: string;
-  urgent?: boolean;
-  onClick: () => void;
-}> = ({ label, detail, value, urgent, onClick }) => (
-  <li>
-    <button onClick={onClick} className="w-full flex items-center gap-3 py-3 text-left group">
-      <span
-        className="w-2 h-2 rounded-full shrink-0"
-        style={{ background: urgent ? C.bad : '#D1D5DB' }}
-        aria-hidden
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13.5px]" style={{ color: C.ink }}>{label}</span>
-        <span className="block text-[12.5px] truncate" style={{ color: urgent ? C.bad : C.muted }}>{detail}</span>
-      </span>
-      <span className="text-[14px] font-semibold shrink-0" style={{ color: C.ink }}>{value}</span>
-      <ChevronRight className="w-4 h-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: C.muted }} />
-    </button>
-  </li>
+const Figure: React.FC<{ label: string; value: string; sub?: React.ReactNode }> = ({ label, value, sub }) => (
+  <div className="min-w-0">
+    <dt className="text-[13px]" style={{ color: C.muted }}>{label}</dt>
+    <dd className="mt-1 text-[20px] font-semibold tracking-tight leading-tight" style={{ color: C.ink }}>{value}</dd>
+    {sub && <dd className="mt-0.5 text-[12.5px]" style={{ color: C.muted }}>{sub}</dd>}
+  </div>
+);
+
+const SectionTitle: React.FC<{ children: React.ReactNode; action?: React.ReactNode }> = ({ children, action }) => (
+  <div className="flex items-end justify-between gap-3 mb-3 px-0.5">
+    <h2 className="text-[16px] font-semibold tracking-tight" style={{ color: C.ink }}>{children}</h2>
+    {action}
+  </div>
+);
+
+const Panel: React.FC<{ className?: string; children: React.ReactNode }> = ({ className = '', children }) => (
+  <section className={`bg-white border rounded-2xl min-w-0 ${className}`} style={{ borderColor: C.line }}>
+    {children}
+  </section>
+);
+
+const ColHead: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3 className="text-[13px] mb-4" style={{ color: C.muted }}>{children}</h3>
 );
 
 export const DashboardView: React.FC = () => {
@@ -318,7 +338,7 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     setActiveReceiptInvoice
   } = useApp();
-  const [range, setRange] = useState<'14d' | '30d' | '12m'>('14d');
+  const [range, setRange] = useState<'14d' | '30d' | '12m'>('30d');
 
   const canSeeMoney = currentUser.role === 'super_admin' || !!currentUser.permissions.canViewGlobalReports;
   const now = new Date();
@@ -344,334 +364,357 @@ export const DashboardView: React.FC = () => {
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser.name.split(/\s+/)[0];
-  const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const scopeLabel =
-    activeBusiness === 'all' ? 'Both businesses' : activeBusiness === 'amanot_electronics' ? 'Amanat Electronics' : 'Amanat Enterprise';
+  const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   const rangeLabel = range === '14d' ? 'previous 14 days' : range === '30d' ? 'previous 30 days' : 'previous 12 months';
-  const half = Math.ceil(d.stock.byCategory.length / 2);
-  const catRows = (list: typeof d.stock.byCategory) =>
-    list.map((c) => ({
-      label: c.label,
-      value: c.units,
-      display: c.units.toLocaleString('en-IN'),
-      note: c.low ? `${c.low} low` : undefined
-    }));
+  const low = Math.max(0, d.stock.lowCount - d.stock.outCount);
+  const paySum = d.month.byPayment.reduce((t, x) => t + x.value, 0);
+
+  const todo = [
+    { label: 'Out of stock', value: String(d.stock.outCount), urgent: d.stock.outCount > 0, tab: 'inventory' as const },
+    { label: 'Running low', value: String(low), urgent: false, tab: 'inventory' as const },
+    { label: 'Unpaid balances', value: tkShort(d.dues.total), urgent: false, tab: 'crm' as const },
+    { label: 'Open quotes and leads', value: String(d.quotes.open), urgent: false, tab: 'quotes' as const }
+  ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[13px]" style={{ color: C.muted }}>{dateLabel}</p>
-          <h1 className="mt-0.5 text-[24px] font-semibold tracking-tight" style={{ color: C.ink }}>
+          <h1 className="text-[26px] font-semibold tracking-tight" style={{ color: C.ink }}>
             {greeting}, {firstName}
           </h1>
+          <p className="mt-0.5 text-sm" style={{ color: C.muted }}>Here is how {dateLabel} is going.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('pos')}
-            className="h-9 px-4 rounded-lg text-sm font-semibold text-white flex items-center gap-2 bg-[#2E3192] hover:bg-[#25277A]"
-          >
-            <ShoppingCart className="w-4 h-4" /> New sale
-          </button>
-        </div>
+        <button
+          onClick={() => setActiveTab('pos')}
+          className="h-10 px-4 rounded-lg text-sm font-semibold text-white flex items-center gap-2 bg-[#2E3192] hover:bg-[#25277A]"
+        >
+          <ShoppingCart className="w-4 h-4" /> New sale
+        </button>
       </div>
 
-      {/* Key figures: one strip, not a wall of boxes */}
-      <section
-        className="bg-white border rounded-xl grid grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x overflow-hidden [&>*:nth-child(odd):not(:last-child)]:max-lg:border-r"
-        style={{ borderColor: C.line }}
-        aria-label="Key figures"
-      >
-        <Kpi
-          label="Sales today"
-          value={tk(d.today.total)}
-          sub={<Delta now={d.today.total} before={d.yesterday.total} label="yesterday" />}
-          onClick={() => setActiveTab('invoices')}
-        />
-        <Kpi
-          label="Received today"
-          value={tk(d.today.collected)}
-          sub={<span style={{ color: C.muted }}>{d.today.count} invoice{d.today.count === 1 ? '' : 's'}, EMI {tkShort(d.today.emiCollected)}</span>}
-        />
-        <Kpi
-          label="This month"
-          value={tkShort(d.month.total)}
-          sub={
-            canSeeMoney ? (
-              <span style={{ color: C.muted }}>
-                Profit {tkShort(d.month.profit)}
-                {d.month.total > 0 && `, ${Math.round((d.month.profit / d.month.total) * 100)}%`}
-              </span>
-            ) : (
-              <Delta now={d.month.total} before={d.lastMonth.total} label="last month" />
-            )
-          }
-        />
-        <Kpi
-          label="Customers owe"
-          value={tkShort(d.dues.total)}
-          sub={<span style={{ color: C.muted }}>{d.dues.count} customer{d.dues.count === 1 ? '' : 's'}</span>}
-          onClick={() => setActiveTab('crm')}
-        />
-        <Kpi
-          className="max-lg:col-span-2"
-          label="Customers"
-          value={d.customers.total.toLocaleString('en-IN')}
-          sub={<span style={{ color: C.muted }}>{d.customers.newThisMonth} new this month</span>}
-          onClick={() => setActiveTab('crm')}
-        />
-      </section>
-
-      {/* Sales trend + what needs attention */}
-      <div className="grid gap-5 xl:grid-cols-3">
-        <section className="xl:col-span-2 bg-white border rounded-xl p-5 min-w-0" style={{ borderColor: C.line }}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-[13px]" style={{ color: C.muted }}>Sales</h2>
-              <p className="mt-1 text-[24px] font-semibold tracking-tight leading-tight" style={{ color: C.ink }}>
-                {tk(d.trendTotal)}
+      {/* Today: the one bold panel */}
+      <div className="space-y-3">
+        <Panel className="overflow-hidden">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+            <div className="p-6 sm:p-7">
+              <p className="text-sm" style={{ color: C.muted }}>Sales today</p>
+              <p className="mt-1 text-[40px] sm:text-[46px] leading-none font-semibold tracking-tight" style={{ color: C.ink }}>
+                {tk(d.today.total)}
               </p>
-              <p className="mt-1 text-[12.5px]">
-                <Delta now={d.trendTotal} before={d.trendPrev} label={`the ${rangeLabel}`} />
-                <span style={{ color: C.muted }}>
-                  {' '}
-                  from {d.trendCount} sale{d.trendCount === 1 ? '' : 's'}
+              <p className="mt-3 text-[13px]">
+                <Delta now={d.today.total} before={d.yesterday.total} label="yesterday" />
+              </p>
+              <dl className="mt-6 grid grid-cols-3 gap-4 pt-5 border-t" style={{ borderColor: C.line }}>
+                <Figure label="Received" value={tkShort(d.today.collected)} />
+                <Figure label="Invoices" value={String(d.today.count)} />
+                <Figure
+                  label="Average"
+                  value={d.today.count ? tkShort(d.today.total / d.today.count) : '৳0'}
+                />
+              </dl>
+            </div>
+            <div className="relative px-6 sm:px-7 pb-6 lg:pt-7 lg:border-l flex flex-col" style={{ borderColor: C.line }}>
+              <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span style={{ color: C.muted }}>Last 14 days</span>
+                <span style={{ color: C.ink }} className="font-medium">
+                  {tk(d.spark.reduce((t, p) => t + p.value, 0))}
                 </span>
-              </p>
-            </div>
-            <div className="flex p-0.5 rounded-lg bg-[#F0F1F3] text-[13px]" role="group" aria-label="Period">
-              {(
-                [
-                  ['14d', '14 days'],
-                  ['30d', '30 days'],
-                  ['12m', '12 months']
-                ] as const
-              ).map(([k, label]) => (
-                <button
-                  key={k}
-                  onClick={() => setRange(k)}
-                  aria-pressed={range === k}
-                  className={`px-3 h-7 rounded-md transition-colors ${range === k ? 'bg-white shadow-sm font-medium' : ''}`}
-                  style={{ color: range === k ? C.ink : C.muted }}
-                >
-                  {label}
-                </button>
-              ))}
+              </div>
+              <div className="mt-auto pt-6">
+                <Spark values={d.spark.map((p) => p.value)} labels={d.spark.map((p) => p.label)} />
+                <div className="mt-2 flex justify-between text-[11px]" style={{ color: C.faint }}>
+                  <span>{d.spark[0]?.short}</span>
+                  <span>Today</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <TimeBars data={d.trend} />
-          </div>
-        </section>
+        </Panel>
 
-        <section className="bg-white border rounded-xl px-5 pt-5 pb-2 min-w-0" style={{ borderColor: C.line }}>
-          <h2 className="text-[15px] font-semibold" style={{ color: C.ink }}>Needs attention</h2>
-          <ul className="mt-1 divide-y" style={{ borderColor: C.line }}>
-            <AttentionRow
-              label="Overdue installments"
-              detail={d.emi.overdueCount ? `${d.emi.overdueCount} payment${d.emi.overdueCount === 1 ? '' : 's'} late` : 'Nobody is late'}
-              value={tkShort(d.emi.overdueAmount)}
-              urgent={d.emi.overdueCount > 0}
-              onClick={() => setActiveTab('installments')}
-            />
-            <AttentionRow
-              label="Installments due this week"
-              detail={`${d.emi.dueSoonCount} payment${d.emi.dueSoonCount === 1 ? '' : 's'} in the next 7 days`}
-              value={tkShort(d.emi.dueSoonAmount)}
-              onClick={() => setActiveTab('installments')}
-            />
-            <AttentionRow
-              label="Out of stock"
-              detail={d.stock.outCount ? 'Cannot be sold until restocked' : 'Everything is available'}
-              value={String(d.stock.outCount)}
-              urgent={d.stock.outCount > 0}
-              onClick={() => setActiveTab('inventory')}
-            />
-            <AttentionRow
-              label="Running low"
-              detail="At or below the alert level"
-              value={String(Math.max(0, d.stock.lowCount - d.stock.outCount))}
-              onClick={() => setActiveTab('inventory')}
-            />
-            <AttentionRow
-              label="Unpaid customer balances"
-              detail={`${d.dues.count} customer${d.dues.count === 1 ? '' : 's'} to follow up`}
-              value={tkShort(d.dues.total)}
-              onClick={() => setActiveTab('crm')}
-            />
-            <AttentionRow
-              label="Open quotes and leads"
-              detail={`${d.quotes.website} from the website`}
-              value={String(d.quotes.open)}
-              onClick={() => setActiveTab('quotes')}
-            />
-          </ul>
-        </section>
+        {/* Follow-ups, one slim row */}
+        <nav
+          aria-label="Follow-ups"
+          className="bg-white border rounded-2xl grid sm:grid-cols-2 lg:grid-cols-4 max-sm:divide-y sm:divide-x sm:max-lg:[&>*:nth-child(-n+2)]:border-b overflow-hidden"
+          style={{ borderColor: C.line }}
+        >
+          {todo.map((t) => (
+            <button
+              key={t.label}
+              onClick={() => setActiveTab(t.tab)}
+              className="flex items-center gap-3 px-5 py-3.5 text-left hover:bg-[#FAFAFB] transition-colors group"
+            >
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.urgent ? C.bad : '#D1D5DB' }} aria-hidden />
+              <span className="flex-1 min-w-0 text-[13px] truncate" style={{ color: C.muted }}>{t.label}</span>
+              <span className="text-[15px] font-semibold" style={{ color: t.urgent ? C.bad : C.ink }}>{t.value}</span>
+              <ChevronRight className="w-4 h-4 opacity-30 group-hover:opacity-80" style={{ color: C.muted }} />
+            </button>
+          ))}
+        </nav>
       </div>
 
-      {/* This month */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card title="Best sellers this month">
-          {d.month.topProducts.length === 0 ? (
-            <p className="text-sm py-6 text-center" style={{ color: C.muted }}>No sales this month yet.</p>
-          ) : (
-            <ol className="-my-1">
-              {d.month.topProducts.slice(0, 5).map((p, i) => (
-                <li key={p.label} className="flex items-center gap-3 py-2 text-[13px]">
-                  <span className="w-5 text-right shrink-0" style={{ color: C.faint }}>{i + 1}</span>
-                  <span className="min-w-0 flex-1 truncate" style={{ color: C.ink }}>{p.label}</span>
-                  <span className="shrink-0" style={{ color: C.muted }}>{p.qty} sold</span>
-                  <span className="w-[72px] text-right shrink-0 font-medium" style={{ color: C.ink }}>{tkShort(p.value)}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Card>
-        <Card title="Sales by category">
-          <HBars
-            rows={d.month.byCategory.map((c) => ({ label: c.label, value: c.value, display: tkShort(c.value) }))}
-            empty="No sales this month yet."
-          />
-        </Card>
-        <Card title="Where sales came from">
-          <SplitBar parts={d.month.byBusiness} format={tkShort} />
-          <div className="mt-5 pt-4 border-t" style={{ borderColor: C.line }}>
-            <p className="text-[13px] mb-3" style={{ color: C.muted }}>Payment method</p>
+      {/* Sales over time + the month */}
+      <div>
+        <SectionTitle>Sales</SectionTitle>
+        <Panel>
+          <div className="grid xl:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="p-6 min-w-0">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[28px] font-semibold tracking-tight leading-tight" style={{ color: C.ink }}>
+                    {tk(d.trendTotal)}
+                  </p>
+                  <p className="mt-1 text-[13px]">
+                    <Delta now={d.trendTotal} before={d.trendPrev} label={`the ${rangeLabel}`} />
+                    <span style={{ color: C.muted }}>
+                      , {d.trendCount} sale{d.trendCount === 1 ? '' : 's'}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex p-0.5 rounded-lg bg-[#F0F1F3] text-[13px]" role="group" aria-label="Period">
+                  {(
+                    [
+                      ['14d', '14 days'],
+                      ['30d', '30 days'],
+                      ['12m', '12 months']
+                    ] as const
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => setRange(k)}
+                      aria-pressed={range === k}
+                      className={`px-3 h-7 rounded-md transition-colors ${range === k ? 'bg-white shadow-sm font-medium' : ''}`}
+                      style={{ color: range === k ? C.ink : C.muted }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-5">
+                <TimeBars data={d.trend} />
+              </div>
+            </div>
+
+            <aside className="p-6 border-t xl:border-t-0 xl:border-l space-y-6" style={{ borderColor: C.line }}>
+              <dl className="grid grid-cols-2 gap-5">
+                <Figure label="This month" value={tkShort(d.month.total)} />
+                {canSeeMoney ? (
+                  <Figure
+                    label="Gross profit"
+                    value={tkShort(d.month.profit)}
+                    sub={d.month.total > 0 ? `${Math.round((d.month.profit / d.month.total) * 100)}% margin` : undefined}
+                  />
+                ) : (
+                  <Figure label="Last month" value={tkShort(d.lastMonth.total)} />
+                )}
+                <Figure label="Customers" value={d.customers.total.toLocaleString('en-IN')} sub={`${d.customers.newThisMonth} new this month`} />
+                <Figure label="Customers owe" value={tkShort(d.dues.total)} sub={`${d.dues.count} customer${d.dues.count === 1 ? '' : 's'}`} />
+              </dl>
+              <div className="pt-5 border-t" style={{ borderColor: C.line }}>
+                <ColHead>This month by business</ColHead>
+                <SplitBar parts={d.month.byBusiness} format={tkShort} />
+              </div>
+            </aside>
+          </div>
+        </Panel>
+      </div>
+
+      {/* What sold */}
+      <div>
+        <SectionTitle>What sold this month</SectionTitle>
+        <Panel className="grid lg:grid-cols-3 lg:divide-x divide-y lg:divide-y-0" >
+          <div className="p-6 min-w-0">
+            <ColHead>Best sellers</ColHead>
+            {d.month.topProducts.length === 0 ? (
+              <p className="text-sm" style={{ color: C.muted }}>No sales this month yet.</p>
+            ) : (
+              <ol className="space-y-3">
+                {d.month.topProducts.slice(0, 5).map((p, i) => (
+                  <li key={p.label} className="flex items-center gap-3 text-[13px]">
+                    <span
+                      className="w-6 h-6 shrink-0 rounded-md flex items-center justify-center text-[12px] font-medium"
+                      style={{ background: i === 0 ? '#EEF0FB' : '#F3F4F6', color: i === 0 ? '#2E3192' : C.muted }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate" style={{ color: C.ink }}>{p.label}</span>
+                      <span className="block" style={{ color: C.muted }}>{p.qty} sold</span>
+                    </span>
+                    <span className="shrink-0 font-medium" style={{ color: C.ink }}>{tkShort(p.value)}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          <div className="p-6 min-w-0" style={{ borderColor: C.line }}>
+            <ColHead>By category</ColHead>
+            <HBars
+              rows={d.month.byCategory.map((c) => ({ label: c.label, value: c.value, display: tkShort(c.value) }))}
+              empty="No sales this month yet."
+            />
+          </div>
+          <div className="p-6 min-w-0" style={{ borderColor: C.line }}>
+            <ColHead>How customers paid</ColHead>
             {d.month.byPayment.length === 0 ? (
               <p className="text-sm" style={{ color: C.muted }}>No payments this month.</p>
             ) : (
-              <ul className="space-y-2 text-[13px]">
-                {d.month.byPayment.map((p) => {
-                  const total = d.month.byPayment.reduce((t, x) => t + x.value, 0);
-                  return (
-                    <li key={p.label} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0" style={{ color: C.ink }}>{p.label}</span>
-                      <span className="flex-1 h-1.5 rounded-full" style={{ background: C.grid }}>
-                        <span className="block h-1.5 rounded-full" style={{ width: `${(p.value / total) * 100}%`, background: C.bar }} />
-                      </span>
-                      <span className="w-16 text-right shrink-0" style={{ color: C.muted }}>{tkShort(p.value)}</span>
-                    </li>
-                  );
-                })}
+              <HBars
+                rows={d.month.byPayment.map((p) => ({
+                  label: p.label,
+                  value: p.value,
+                  display: tkShort(p.value),
+                  note: `${Math.round((p.value / paySum) * 100)}%`
+                }))}
+                empty=""
+              />
+            )}
+          </div>
+        </Panel>
+      </div>
+
+      {/* Stock */}
+      <div>
+        <SectionTitle action={<LinkButton onClick={() => setActiveTab('inventory')}>Open inventory</LinkButton>}>Stock</SectionTitle>
+        <Panel className="grid xl:grid-cols-[minmax(0,1fr)_360px] xl:divide-x divide-y xl:divide-y-0">
+          <div className="p-6 min-w-0">
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+              <Figure label="Units in stock" value={d.stock.units.toLocaleString('en-IN')} sub={`${d.stock.skus} products`} />
+              {canSeeMoney ? (
+                <Figure label="Value at cost" value={tkShort(d.stock.costValue)} sub={`${tkShort(d.stock.retailValue)} at retail`} />
+              ) : (
+                <Figure label="Value at retail" value={tkShort(d.stock.retailValue)} />
+              )}
+              <Figure label="Running low" value={String(low)} sub="Below alert level" />
+              <Figure label="Out of stock" value={String(d.stock.outCount)} sub="Need restocking" />
+            </dl>
+            <div className="mt-6 pt-6 border-t" style={{ borderColor: C.line }}>
+              <ColHead>Units by category</ColHead>
+              <div className="grid gap-x-10 gap-y-3 md:grid-cols-2">
+                <HBars
+                  rows={d.stock.byCategory.slice(0, Math.ceil(d.stock.byCategory.length / 2)).map((c) => ({
+                    label: c.label,
+                    value: c.units,
+                    display: c.units.toLocaleString('en-IN'),
+                    note: c.low ? `${c.low} low` : undefined
+                  }))}
+                  empty="No stock recorded."
+                />
+                <HBars
+                  rows={d.stock.byCategory.slice(Math.ceil(d.stock.byCategory.length / 2)).map((c) => ({
+                    label: c.label,
+                    value: c.units,
+                    display: c.units.toLocaleString('en-IN'),
+                    note: c.low ? `${c.low} low` : undefined
+                  }))}
+                  empty=""
+                />
+              </div>
+            </div>
+          </div>
+          <div className="p-6 min-w-0" style={{ borderColor: C.line }}>
+            <div className="flex items-center justify-between mb-2">
+              <ColHead>Restock soon</ColHead>
+              <span className="-mt-4">
+                <LinkButton onClick={() => setActiveTab('suppliers')}>Suppliers</LinkButton>
+              </span>
+            </div>
+            {d.stock.lowList.length === 0 ? (
+              <p className="text-sm" style={{ color: C.muted }}>Nothing is running low.</p>
+            ) : (
+              <ul className="-mt-2">
+                {d.stock.lowList.slice(0, 6).map((p) => (
+                  <li key={p.id} className="py-2.5 flex items-center gap-3 text-[13px] border-b last:border-b-0" style={{ borderColor: C.line }}>
+                    <span className="w-9 h-9 shrink-0 rounded-lg bg-[#F3F3F1] flex items-center justify-center overflow-hidden">
+                      {p.image ? (
+                        <img src={p.image} alt="" loading="lazy" className="w-full h-full object-contain p-1 mix-blend-multiply" />
+                      ) : (
+                        <PackageX className="w-4 h-4" style={{ color: C.faint }} />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate" style={{ color: C.ink }}>{p.name}</span>
+                      <span className="block truncate" style={{ color: C.muted }}>{p.brand}{p.model ? `, ${p.model}` : ''}</span>
+                    </span>
+                    <span
+                      className="shrink-0 text-[12px] px-2 py-0.5 rounded-full"
+                      style={
+                        p.stockQty <= 0
+                          ? { background: '#FEF3F2', color: C.bad }
+                          : { background: '#F3F4F6', color: C.ink }
+                      }
+                    >
+                      {p.stockQty <= 0 ? 'Out' : `${p.stockQty} left`}
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
-        </Card>
+        </Panel>
       </div>
 
-      {/* Inventory */}
-      <div className="grid gap-5 xl:grid-cols-3">
-        <section className="xl:col-span-2 bg-white border rounded-xl p-5 min-w-0" style={{ borderColor: C.line }}>
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-semibold" style={{ color: C.ink }}>Inventory</h2>
-            <LinkButton onClick={() => setActiveTab('inventory')}>Open inventory</LinkButton>
-          </div>
-          <dl className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              ['Units in stock', d.stock.units.toLocaleString('en-IN'), `${d.stock.skus} products`],
-              canSeeMoney
-                ? ['Value at cost', tkShort(d.stock.costValue), `${tkShort(d.stock.retailValue)} at retail`]
-                : ['Value at retail', tkShort(d.stock.retailValue), ''],
-              ['Running low', String(Math.max(0, d.stock.lowCount - d.stock.outCount)), 'Below alert level'],
-              ['Out of stock', String(d.stock.outCount), 'Need restocking']
-            ].map(([k, v, sub]) => (
-              <div key={k} className="min-w-0">
-                <dt className="text-[13px]" style={{ color: C.muted }}>{k}</dt>
-                <dd className="mt-0.5 text-[20px] font-semibold tracking-tight" style={{ color: C.ink }}>{v}</dd>
-                {sub && <dd className="text-[12.5px]" style={{ color: C.muted }}>{sub}</dd>}
-              </div>
-            ))}
-          </dl>
-          <div className="mt-5 pt-5 border-t" style={{ borderColor: C.line }}>
-            <p className="text-[13px] mb-3" style={{ color: C.muted }}>Units by category</p>
-            <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
-              <HBars rows={catRows(d.stock.byCategory.slice(0, half))} empty="No stock recorded." />
-              <HBars rows={catRows(d.stock.byCategory.slice(half))} empty="" />
-            </div>
-          </div>
-        </section>
-
-        <Card title="Restock soon" action={<LinkButton onClick={() => setActiveTab('suppliers')}>Suppliers</LinkButton>}>
-          {d.stock.lowList.length === 0 ? (
-            <p className="text-sm py-6 text-center" style={{ color: C.muted }}>Nothing is running low.</p>
+      {/* Latest sales */}
+      <div>
+        <SectionTitle action={<LinkButton onClick={() => setActiveTab('invoices')}>All invoices</LinkButton>}>Latest sales</SectionTitle>
+        <Panel className="overflow-hidden">
+          {d.recent.length === 0 ? (
+            <p className="text-sm p-6 text-center" style={{ color: C.muted }}>No sales yet. Sales you complete in POS appear here.</p>
           ) : (
-            <ul className="divide-y -my-2" style={{ borderColor: C.line }}>
-              {d.stock.lowList.map((p) => (
-                <li key={p.id} className="py-2.5 flex items-center gap-3 text-[13px]">
-                  <span className="w-10 h-10 shrink-0 rounded-lg bg-[#F3F3F1] flex items-center justify-center overflow-hidden">
-                    {p.image ? (
-                      <img src={p.image} alt="" loading="lazy" className="w-full h-full object-contain p-1 mix-blend-multiply" />
-                    ) : (
-                      <PackageX className="w-4 h-4" style={{ color: C.faint }} />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate" style={{ color: C.ink }}>{p.name}</span>
-                    <span className="block truncate" style={{ color: C.muted }}>{p.model || p.category}</span>
-                  </span>
-                  <span className="shrink-0 text-right" style={{ color: p.stockQty <= 0 ? C.bad : C.ink }}>
-                    {p.stockQty <= 0 ? 'Out' : `${p.stockQty} left`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      {/* Recent sales */}
-      <Card title="Latest sales" action={<LinkButton onClick={() => setActiveTab('invoices')}>All invoices</LinkButton>}>
-        {d.recent.length === 0 ? (
-          <p className="text-sm py-6 text-center" style={{ color: C.muted }}>No sales yet.</p>
-        ) : (
-          <div className="overflow-x-auto -mx-5 -mb-5">
-            <table className="w-full text-[13px] min-w-[640px]">
-              <thead>
-                <tr className="border-y" style={{ borderColor: C.line, color: C.muted, background: '#FAFAFB' }}>
-                  <th className="text-left font-normal px-5 py-2">Invoice</th>
-                  <th className="text-left font-normal px-3 py-2">Customer</th>
-                  <th className="text-left font-normal px-3 py-2">Business</th>
-                  <th className="text-right font-normal px-3 py-2">Total</th>
-                  <th className="text-right font-normal px-5 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.recent.map((s: SaleInvoice) => (
-                  <tr
-                    key={s.id}
-                    onClick={() => setActiveReceiptInvoice(s)}
-                    className="border-b last:border-b-0 cursor-pointer hover:bg-[#FAFAFB]"
-                    style={{ borderColor: C.line }}
-                  >
-                    <td className="px-5 py-3">
-                      <span className="font-medium" style={{ color: C.ink }}>{s.id}</span>
-                      <span className="ml-2" style={{ color: C.muted }}>
-                        {new Date(s.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3" style={{ color: C.ink }}>{s.customerName}</td>
-                    <td className="px-3 py-3">
-                      <span className="inline-flex items-center gap-1.5" style={{ color: C.muted }}>
-                        <span className="w-2 h-2 rounded-full" style={{ background: BUSINESS_COLOR[s.business] }} aria-hidden />
-                        {BUSINESS_NAME[s.business]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right font-medium" style={{ color: C.ink }}>{tk(s.grandTotal)}</td>
-                    <td className="px-5 py-3 text-right">
-                      {s.dueAmount > 0 ? (
-                        <span style={{ color: C.bad }}>{tk(s.dueAmount)} due</span>
-                      ) : (
-                        <span style={{ color: C.good }}>Paid</span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px] min-w-[640px]">
+                <thead>
+                  <tr style={{ color: C.muted }}>
+                    <th className="text-left font-normal px-6 pt-4 pb-2">Invoice</th>
+                    <th className="text-left font-normal px-3 pt-4 pb-2">Customer</th>
+                    <th className="text-left font-normal px-3 pt-4 pb-2">Business</th>
+                    <th className="text-right font-normal px-3 pt-4 pb-2">Total</th>
+                    <th className="text-right font-normal px-6 pt-4 pb-2">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                </thead>
+                <tbody>
+                  {d.recent.map((s: SaleInvoice) => (
+                    <tr
+                      key={s.id}
+                      onClick={() => setActiveReceiptInvoice(s)}
+                      className="border-t cursor-pointer hover:bg-[#FAFAFB]"
+                      style={{ borderColor: C.line }}
+                    >
+                      <td className="px-6 py-3">
+                        <span className="font-medium" style={{ color: C.ink }}>{s.id}</span>
+                        <span className="ml-2" style={{ color: C.muted }}>
+                          {new Date(s.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3" style={{ color: C.ink }}>{s.customerName}</td>
+                      <td className="px-3 py-3">
+                        <span className="inline-flex items-center gap-1.5" style={{ color: C.muted }}>
+                          <span className="w-2 h-2 rounded-full" style={{ background: BUSINESS_COLOR[s.business] }} aria-hidden />
+                          {BUSINESS_NAME[s.business]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium" style={{ color: C.ink }}>{tk(s.grandTotal)}</td>
+                      <td className="px-6 py-3 text-right">
+                        {s.dueAmount > 0 ? (
+                          <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: '#FEF3F2', color: C.bad }}>
+                            {tkShort(s.dueAmount)} due
+                          </span>
+                        ) : (
+                          <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: '#ECFDF3', color: C.good }}>
+                            Paid
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 };
