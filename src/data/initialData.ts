@@ -20,6 +20,7 @@ import {
 // Regenerate with: node scripts/generate-electronics.mjs
 import electronicsProducts from './electronicsProducts.json';
 import haierProducts from './haierProducts.json';
+import { fillProductImages } from '../utils/productImages';
 import { DEFAULT_BRAND_LOGOS } from './brandLogos';
 import {
   AMANOT_ELECTRONICS_ADDRESS,
@@ -79,10 +80,10 @@ export const INITIAL_STAFF_USERS: StaffUser[] = [
   }
 ];
 
-export const INITIAL_PRODUCTS: Product[] = [
+export const INITIAL_PRODUCTS: Product[] = fillProductImages([
   ...(electronicsProducts as unknown as Product[]),
   ...(haierProducts as unknown as Product[])
-];
+]).products;
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {

@@ -16,9 +16,18 @@ import { findCustomerByPhone, normalizePhone } from '../utils/phone';
 import { maybePromoteVip } from '../utils/vip';
 import { withFixedEnterpriseContact } from '../constants/business';
 import { HAIER_PRODUCTS, mergeHaierCatalog, needsHaierImport, markHaierImported } from '../utils/haierCatalog';
+import { fillProductImages, needsImageFill, markImagesFilled } from '../utils/productImages';
 
 const addUnique = (list: string[], extra: string[]) => Array.from(new Set([...list, ...extra]));
 const HAIER_CATEGORIES = Array.from(new Set(HAIER_PRODUCTS.map((p) => p.category)));
+const savedSettingsNeedImages = () => {
+  try {
+    const raw = localStorage.getItem('amanot_settings');
+    return needsImageFill(raw ? JSON.parse(raw) : undefined);
+  } catch {
+    return true;
+  }
+};
 const savedSettingsNeedHaier = () => {
   try {
     const raw = localStorage.getItem('amanot_settings');
@@ -384,7 +393,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('amanot_settings');
     // Haier catalogue is merged into products below whenever this tag is missing.
-    return withFixedEnterpriseContact(markHaierImported(saved ? JSON.parse(saved) : INITIAL_APP_SETTINGS));
+    return withFixedEnterpriseContact(
+      markImagesFilled(markHaierImported(saved ? JSON.parse(saved) : INITIAL_APP_SETTINGS))
+    );
   });
   const [auditConfig, setAuditConfig] = useState<AuditConfig>(() => {
     const saved = localStorage.getItem('amanot_audit_config');
@@ -551,8 +562,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('amanot_products');
     if (!saved) return INITIAL_PRODUCTS;
-    const list: Product[] = JSON.parse(saved);
-    return savedSettingsNeedHaier() ? mergeHaierCatalog(list).products : list;
+    let list: Product[] = JSON.parse(saved);
+    if (savedSettingsNeedHaier()) list = mergeHaierCatalog(list).products;
+    if (savedSettingsNeedImages()) list = fillProductImages(list).products;
+    return list;
   });
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('amanot_customers');
@@ -667,8 +680,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!state) return;
     // One-time merge of the bundled Haier catalogue into Amanat Enterprise.
     const importHaier = needsHaierImport(state.settings);
+    // One-time fill of bundled product photos for products that have none.
+    const fillImages = needsImageFill(state.settings);
     if (state.staffUsers) setStaffUsers(state.staffUsers);
-    if (state.products) setProducts(importHaier ? mergeHaierCatalog(state.products).products : state.products);
+    if (state.products) {
+      let list: Product[] = state.products;
+      if (importHaier) list = mergeHaierCatalog(list).products;
+      if (fillImages) list = fillProductImages(list).products;
+      setProducts(list);
+    }
     if (state.customers) setCustomers(state.customers);
     if (state.suppliers) setSuppliers(state.suppliers);
     if (state.sales) setSales(state.sales);
@@ -687,7 +707,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (state.supplierReturns) setSupplierReturns(state.supplierReturns);
     if (state.customerReturns) setCustomerReturns(state.customerReturns);
     if (state.settings) {
-      setSettings(withFixedEnterpriseContact(importHaier ? markHaierImported(state.settings) : state.settings));
+      let next = state.settings;
+      if (importHaier) next = markHaierImported(next);
+      if (fillImages) next = markImagesFilled(next);
+      setSettings(withFixedEnterpriseContact(next));
     }
     if (state.auditConfig) setAuditConfig(state.auditConfig);
     applyMasterLists(state.masterLists);
