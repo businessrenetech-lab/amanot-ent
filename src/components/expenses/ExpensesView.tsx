@@ -272,10 +272,10 @@ export const ExpensesView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header Banner — title + actions (top right) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
           <DollarSign className="w-6 h-6 text-rose-600" />
-          Professional Business Expense Manager
+          Expenses
         </h1>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -368,7 +368,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('today')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'today' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'today' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             Today (Daily)
@@ -377,7 +377,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('yesterday')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'yesterday' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'yesterday' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             Yesterday
@@ -386,7 +386,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('this_month')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'this_month' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'this_month' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             This Month
@@ -395,7 +395,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('last_month')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'last_month' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'last_month' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             Last Month
@@ -404,7 +404,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('custom')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'custom' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'custom' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             Custom Range (From - To)
@@ -413,7 +413,7 @@ export const ExpensesView: React.FC = () => {
           <button
             onClick={() => setDateFilterMode('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              dateFilterMode === 'all' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              dateFilterMode === 'all' ? 'bg-[#16181D] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             All Time

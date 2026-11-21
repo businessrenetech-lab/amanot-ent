@@ -235,11 +235,11 @@ export const QuotesView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <FileCheck className="w-6 h-6 text-yellow-500" />
-            Quotations & Price Inquiries
+            Quotes & leads
           </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
+          <p className="text-sm text-[#6B7280] mt-1 max-w-2xl">
             Create, edit, print, and convert customer price quotations and website lead estimates.
           </p>
         </div>

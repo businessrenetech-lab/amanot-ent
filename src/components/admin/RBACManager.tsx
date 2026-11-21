@@ -94,11 +94,11 @@ export const RBACManager: React.FC = () => {
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-orange-600" />
-            Staff RBAC & Access Control
+            Staff & access
           </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
+          <p className="text-sm text-[#6B7280] mt-1 max-w-2xl">
             Assign staff to a business and grant module permissions. Changes apply on Save and sync
             to the database.
           </p>

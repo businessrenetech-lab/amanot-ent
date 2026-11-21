@@ -386,11 +386,11 @@ export const SuppliersView: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <Truck className="w-6 h-6 text-teal-600" />
-            Suppliers & Restock Management
+            Suppliers
           </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
+          <p className="text-sm text-[#6B7280] mt-1 max-w-2xl">
             Distributor partners, stock requisitions, bulk product entries, and supplier payments ledger.
           </p>
         </div>

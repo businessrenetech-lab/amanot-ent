@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Tailwind v4 draws a bare `border` in currentColor (black). Use a light grey,
+   like v3 did, so dividers and inputs without a colour class stay quiet. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e3e5e8;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Phone layer for the ERP. Plain (unlayered) CSS so it wins over utilities.
    --------------------------------------------------------------------------- */
@@ -92,4 +104,154 @@ html {
   .flex.overflow-x-auto::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin calm layer. The ERP views were written with heavy weights, all-caps
+   labels, monospace figures, glows and pulses everywhere; this tones all of it
+   down in one place so every page reads quietly. Scoped to the admin shell and
+   its pop-ups; the website and printed receipts are untouched.
+   --------------------------------------------------------------------------- */
+.admin-shell,
+.admin-shell .modal-overlay {
+  font-variant-numeric: tabular-nums;
+}
+.admin-shell :is(main, .modal-overlay) :is(.font-black, .font-extrabold) {
+  font-weight: 600;
+}
+.admin-shell :is(main, .modal-overlay) .uppercase:not(button):not(button *) {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.admin-shell :is(main, .modal-overlay) :is(.tracking-wider, .tracking-widest, .tracking-wide) {
+  letter-spacing: 0;
+}
+.admin-shell :is(main, .modal-overlay) .font-mono {
+  font-family: inherit;
+}
+.admin-shell :is(main, .modal-overlay) :is(.animate-pulse, .animate-ping, .animate-bounce) {
+  animation: none;
+}
+.admin-shell main :is(.shadow-lg, .shadow-xl, .shadow-2xl) {
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.06);
+}
+.admin-shell main :is(.shadow-md, .shadow-sm) {
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+}
+.admin-shell main :is(.rounded-2xl, .rounded-3xl) {
+  border-radius: 0.75rem;
+}
+.admin-shell main .border-slate-200 {
+  border-color: #e6e7ea;
+}
+.admin-shell main :is(.bg-slate-50) {
+  background-color: #f8f9fa;
+}
+/* Tiny 9-10px labels become readable. */
+.admin-shell :is(main, .modal-overlay) :is(.text-\[9px\], .text-\[10px\]) {
+  font-size: 11px;
+}
+.admin-shell :is(main, .modal-overlay) :focus-visible {
+  outline: 2px solid #2e3192;
+  outline-offset: 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell * {
+    transition: none !important;
+  }
+}
+/* Page titles carry no icon; section titles keep a quiet grey one. */
+.admin-shell main h1 > svg {
+  display: none;
+}
+.admin-shell :is(main, .modal-overlay) :is(h2, h3) > svg {
+  color: #8a9099;
+}
+.admin-shell main .bg-white .text-slate-300 {
+  color: #6b7280;
+}
+/* One primary colour for actions instead of a rainbow of buttons. Red stays
+   for destructive actions; tinted "soft" buttons become plain outline ones. */
+.admin-shell :is(main, .modal-overlay) button:is(
+    .bg-blue-600, .bg-blue-500, .bg-indigo-600, .bg-indigo-500, .bg-purple-600, .bg-violet-600,
+    .bg-emerald-600, .bg-emerald-500, .bg-teal-600, .bg-cyan-600, .bg-fuchsia-600, .bg-amber-500, .bg-orange-500,
+    [class*='bg-gradient-to-']
+  ) {
+  background: #2e3192;
+  color: #fff;
+  border-color: transparent;
+}
+.admin-shell :is(main, .modal-overlay) button:is(
+    .bg-blue-600, .bg-blue-500, .bg-indigo-600, .bg-indigo-500, .bg-purple-600, .bg-violet-600,
+    .bg-emerald-600, .bg-emerald-500, .bg-teal-600, .bg-cyan-600, .bg-fuchsia-600, .bg-amber-500, .bg-orange-500,
+    [class*='bg-gradient-to-']
+  ):hover:not(:disabled) {
+  background: #25277a;
+}
+.admin-shell :is(main, .modal-overlay) button:is(.bg-blue-600, .bg-indigo-600, .bg-purple-600, .bg-emerald-600, .bg-teal-600, [class*='bg-gradient-to-']) :is(svg, span) {
+  color: inherit;
+}
+.admin-shell :is(main, .modal-overlay) button.bg-slate-900 {
+  background: #16181d;
+}
+.admin-shell :is(main, .modal-overlay) button:is([class~='bg-rose-50'], [class~='bg-red-50'], [class~='bg-indigo-50'], [class~='bg-purple-50'], [class~='bg-violet-50'], [class~='bg-amber-50'], [class~='bg-emerald-50'], [class~='bg-teal-50'], [class~='bg-blue-50'], [class~='bg-cyan-50'], [class~='bg-orange-50'], [class~='bg-yellow-50'], [class*='bg-amber-500/10'], [class*='bg-blue-500/10'], [class*='bg-emerald-500/10'], [class*='bg-purple-500/10']):not([aria-pressed='true']):not([aria-selected='true']) {
+  background: #fff;
+  color: #3b4049;
+  border-color: #e6e7ea;
+}
+.admin-shell :is(main, .modal-overlay) button:is([class~='bg-rose-50'], [class~='bg-red-50']):not([aria-pressed='true']) {
+  color: #b42318;
+}
+/* Hero metric cards that were painted dark become ordinary cards. */
+.admin-shell main :is(div)[class*='from-slate-900'],
+.admin-shell main :is(div)[class*='from-indigo-950'],
+.admin-shell main :is(div)[class*='from-slate-950'] {
+  background: #fff;
+  color: #16181d;
+  border: 1px solid #e6e7ea;
+}
+.admin-shell main :is(div)[class*='from-slate-900'] :is(.text-white, .text-slate-200, .text-slate-300, .text-slate-400),
+.admin-shell main :is(div)[class*='from-indigo-950'] :is(.text-white, .text-slate-200, .text-slate-300, .text-slate-400),
+.admin-shell main :is(div)[class*='from-slate-950'] :is(.text-white, .text-slate-200, .text-slate-300, .text-slate-400) {
+  color: inherit;
+}
+/* Summary cards: the figure is the point; drop the decorative icon tiles. */
+.admin-shell .kpi-grid > * > :is(.w-10, .w-11, .w-12, .w-14):last-child,
+.admin-shell .kpi-grid > * > div > :is(.w-10, .w-11, .w-12, .w-14):first-child:not(:only-child) {
+  display: none;
+}
+/* Coloured dropdowns read as plain fields. */
+.admin-shell :is(main, .modal-overlay) select:is(
+    .bg-blue-600, .bg-indigo-600, .bg-purple-600, .bg-violet-600, .bg-emerald-600, .bg-amber-500, .bg-slate-900,
+    [class*='bg-gradient-to-']
+  ) {
+  background-color: #fff;
+  background-image: none;
+  color: #16181d;
+  border: 1px solid #e3e5e8;
+}
+/* Gradient-painted summary cards become ordinary white cards. */
+.admin-shell main div[class*='bg-gradient-to-'][class*='p-']:not(button *) {
+  background: #fff;
+  color: #16181d;
+  border: 1px solid #e6e7ea;
+}
+.admin-shell main div[class*='bg-gradient-to-'][class*='p-'] :is(.text-white, [class*='text-white/'], [class*='text-emerald-1'], [class*='text-blue-1'], [class*='text-rose-1'], [class*='text-pink-1'], [class*='text-indigo-1'], [class*='text-purple-1'], .text-slate-300, .text-slate-400, [class*='text-amber-'], [class*='text-yellow-']) {
+  color: inherit;
+}
+.admin-shell main div[class*='bg-gradient-to-'][class*='p-'] :is(p, span):not(:has(*)) {
+  opacity: 1;
+}
+.admin-shell main div[class*='bg-gradient-to-'][class*='p-'] [class*='text-'][class*='/'] {
+  color: #6b7280;
+}
+.admin-shell :is(main, .modal-overlay) .relative:has(> select:is(.bg-blue-600, .bg-indigo-600, .bg-purple-600, .bg-violet-600, .bg-emerald-600, .bg-amber-500, .bg-slate-900)) > svg {
+  color: #6b7280;
+}
+/* Pale text written for the old dark headers stays readable on white. */
+.admin-shell main :is(div[class*='from-slate-900'], div[class*='from-indigo-950'], div[class*='from-slate-950'], div[class*='bg-gradient-to-'][class*='p-'])
+  :is([class~='text-blue-100'], [class~='text-blue-200'], [class~='text-blue-300'], [class~='text-indigo-200'], [class~='text-indigo-300'],
+      [class~='text-emerald-100'], [class~='text-emerald-200'], [class~='text-purple-200'], [class~='text-purple-300'], [class~='text-cyan-200'],
+      [class~='text-teal-100'], [class~='text-rose-100'], [class~='text-rose-200'], [class~='text-amber-200'], [class~='text-slate-500']) {
+  color: #6b7280;
 }

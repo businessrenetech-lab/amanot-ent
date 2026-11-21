@@ -185,10 +185,10 @@ export const InventoryView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header Banner — title + view dropdown & actions (top right) */}
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2 shrink-0">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
           <Package className="w-6 h-6 text-blue-600" />
-          Inventory & Stock Control
+          Inventory
         </h1>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -691,7 +691,7 @@ export const InventoryView: React.FC = () => {
       {/* SUB-TAB 2: Stock Adjustments History */}
       {inventoryTab === 'stock_adjustments' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="px-5 py-4 bg-white text-[#16181D] flex items-center justify-between border-b border-[#E6E7EA]">
             <div>
               <h2 className="text-sm font-extrabold flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-emerald-400" />
@@ -833,7 +833,7 @@ export const InventoryView: React.FC = () => {
       {/* SUB-TAB 4: Supplier Returns */}
       {inventoryTab === 'supplier_returns' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="px-5 py-4 bg-white text-[#16181D] flex items-center justify-between border-b border-[#E6E7EA]">
             <div>
               <h2 className="text-sm font-extrabold flex items-center gap-2">
                 <Undo2 className="w-4 h-4 text-indigo-400" />

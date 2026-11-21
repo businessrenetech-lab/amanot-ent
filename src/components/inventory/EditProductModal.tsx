@@ -951,7 +951,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                 <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <Package className="w-4 h-4 text-blue-600" />
-                  Inventory & Stock Control
+                  Inventory
                 </h4>
 
                 <div className="grid grid-cols-3 gap-3">

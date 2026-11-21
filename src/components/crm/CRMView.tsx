@@ -235,10 +235,10 @@ export const CRMView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header Banner — title + view dropdown & actions (top right) */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
           <Users className="w-6 h-6 text-amber-500" />
-          CRM & Customer Group Management
+          Customers & SMS
         </h1>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -432,10 +432,10 @@ export const CRMView: React.FC = () => {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => setViewCustomerDetail(c)}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-lg text-[11px] flex items-center gap-1 shadow-xs transition"
+                              className="px-2.5 h-8 bg-white hover:bg-[#F3F4F6] text-[#16181D] border border-[#E6E7EA] font-medium rounded-lg text-[13px] flex items-center gap-1 transition-colors"
                               title="View Customer Journey & Profile Dashboard"
                             >
-                              <Sparkles className="w-3.5 h-3.5" /> Journey & Profile
+                              Open profile
                             </button>
 
                             <button

@@ -662,20 +662,11 @@ export const AuditReportsView: React.FC = () => {
     <div className="space-y-6 pb-12">
       
       {/* Header Banner — title + business scope selector (top right) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-indigo-100 text-indigo-900 border border-indigo-300 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
-              Tax Purpose Audit Engine
-            </span>
-            <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-              Configured by Super Admin
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <PieChart className="w-6 h-6 text-indigo-600" />
-            Tax Filing & Compliance Audit Reports
+            Audit reports
           </h1>
         </div>
 

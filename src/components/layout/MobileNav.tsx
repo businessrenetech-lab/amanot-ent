@@ -45,7 +45,7 @@ export const MobileNav: React.FC = () => {
     <>
       <nav
         aria-label="Main"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 pb-[env(safe-area-inset-bottom)] print:hidden"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-[#E6E7EA] pb-[env(safe-area-inset-bottom)] print:hidden"
       >
         <div className="grid grid-cols-5 h-16">
           {primary.map(({ tab, short, Icon }) => {
@@ -55,13 +55,13 @@ export const MobileNav: React.FC = () => {
                 key={tab}
                 onClick={() => go(tab)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition active:scale-95 ${
-                  active ? 'text-white' : 'text-slate-400'
+                className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition active:scale-95 ${
+                  active ? 'text-[#2E3192]' : 'text-[#6B7280]'
                 }`}
               >
                 <span
                   className={`flex items-center justify-center w-12 h-7 rounded-full transition ${
-                    active ? 'bg-blue-600 shadow-md shadow-blue-900/50' : ''
+                    active ? 'bg-[#EEF0FB]' : ''
                   }`}
                 >
                   <Icon className="w-[18px] h-[18px]" />
@@ -74,13 +74,13 @@ export const MobileNav: React.FC = () => {
             onClick={() => setMenuOpen(true)}
             aria-expanded={menuOpen}
             aria-haspopup="dialog"
-            className={`flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition active:scale-95 ${
-              moreActive ? 'text-white' : 'text-slate-400'
+            className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition active:scale-95 ${
+              moreActive ? 'text-[#2E3192]' : 'text-[#6B7280]'
             }`}
           >
             <span
               className={`flex items-center justify-center w-12 h-7 rounded-full transition ${
-                moreActive ? 'bg-blue-600 shadow-md shadow-blue-900/50' : ''
+                moreActive ? 'bg-[#EEF0FB]' : ''
               }`}
             >
               <LayoutGrid className="w-[18px] h-[18px]" />
@@ -95,21 +95,21 @@ export const MobileNav: React.FC = () => {
           <button
             aria-label="Close menu"
             onClick={() => setMenuOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
           />
-          <div className="absolute bottom-0 inset-x-0 max-h-[88vh] flex flex-col bg-slate-900 text-slate-300 rounded-t-3xl border-t border-slate-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+          <div className="absolute bottom-0 inset-x-0 max-h-[88vh] flex flex-col bg-white text-[#16181D] rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="pt-2.5 pb-1 flex justify-center">
-              <span className="w-10 h-1.5 rounded-full bg-slate-700" />
+              <span className="w-10 h-1 rounded-full bg-[#D1D5DB]" />
             </div>
-            <div className="flex items-center justify-between gap-3 px-5 pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between gap-3 px-5 pb-3 border-b border-[#E6E7EA]">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-white truncate">{currentUser.name}</p>
-                <p className="text-[11px] text-slate-400 font-mono">{roleLabel(currentUser)}</p>
+                <p className="text-sm font-semibold truncate">{currentUser.name}</p>
+                <p className="text-xs text-[#6B7280]">{roleLabel(currentUser)}</p>
               </div>
               <button
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close menu"
-                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+                className="p-2 rounded-lg text-[#6B7280] hover:bg-[#F3F4F6]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -117,7 +117,7 @@ export const MobileNav: React.FC = () => {
 
             <div className="overflow-y-auto overscroll-contain px-4 py-4 space-y-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               <div className="space-y-2">
-                <BusinessScopeSelect className="w-full py-2.5" selectClassName="text-sm" />
+                <BusinessScopeSelect className="w-full h-11" />
                 <a
                   href="/"
                   onClick={(e) => {
@@ -125,14 +125,13 @@ export const MobileNav: React.FC = () => {
                     setMenuOpen(false);
                     navigate('/');
                   }}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 py-2.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-200"
+                  className="flex items-center gap-2 h-11 px-3 rounded-lg border border-[#E6E7EA] text-sm font-medium hover:bg-[#F3F4F6]"
                 >
-                  <Store className="w-3.5 h-3.5 text-blue-400" />
-                  View Storefront
+                  <Store className="w-4 h-4 text-[#6B7280]" />
+                  Open website
                 </a>
               </div>
               <NavMenu activeTab={activeTab} onSelect={go} />
-              <p className="pt-2 text-[11px] text-slate-500 text-center">Amanot Enterprise & Electronics v3.4</p>
             </div>
           </div>
         </div>

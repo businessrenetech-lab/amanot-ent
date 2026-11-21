@@ -1,39 +1,39 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { useRouter } from '../../router';
-import { Building2, Store, LogOut } from 'lucide-react';
+import { Store, LogOut, PanelLeft } from 'lucide-react';
 import { getNavSections } from './Sidebar';
 
 /** Business scope picker (All / Electronics / Enterprise), limited to what the user may see. */
-export const BusinessScopeSelect: React.FC<{ className?: string; selectClassName?: string }> = ({
+export const BusinessScopeSelect: React.FC<{ className?: string; selectClassName?: string; tone?: 'light' | 'dark' }> = ({
   className = '',
   selectClassName = '',
+  tone = 'light'
 }) => {
   const { currentUser, activeBusiness, setActiveBusiness } = useApp();
   const isSuperAdmin = currentUser.role === 'super_admin';
+  const dark = tone === 'dark';
+  const dot =
+    activeBusiness === 'amanot_electronics' ? '#5E9B1E' : activeBusiness === 'amanot_enterprise' ? '#2E3192' : '#9CA3AF';
   return (
-    <label className={`flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-xs ${className}`}>
-      <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-      <span className="text-slate-400 text-[11px] uppercase font-bold">Scope:</span>
+    <label
+      className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm ${
+        dark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-[#E6E7EA] text-[#16181D]'
+      } ${className}`}
+    >
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} aria-hidden />
+      <span className="sr-only">Business</span>
       <select
         value={activeBusiness}
         onChange={(e) => setActiveBusiness(e.target.value as any)}
-        className={`min-w-0 flex-1 bg-transparent text-white font-semibold focus:outline-none cursor-pointer ${selectClassName}`}
+        className={`min-w-0 flex-1 bg-transparent font-medium focus:outline-none cursor-pointer ${selectClassName}`}
       >
-        {isSuperAdmin && (
-          <option value="all" className="bg-slate-900">
-            All Businesses (Global)
-          </option>
-        )}
+        {isSuperAdmin && <option value="all">Both businesses</option>}
         {(isSuperAdmin || currentUser.assignedBusiness === 'amanot_electronics') && (
-          <option value="amanot_electronics" className="bg-slate-900">
-            Amanot Electronics (Gree, Konka, Haiko)
-          </option>
+          <option value="amanot_electronics">Amanat Electronics</option>
         )}
         {(isSuperAdmin || currentUser.assignedBusiness === 'amanot_enterprise') && (
-          <option value="amanot_enterprise" className="bg-slate-900">
-            Amanot Enterprise (Haier)
-          </option>
+          <option value="amanot_enterprise">Amanat Enterprise</option>
         )}
       </select>
     </label>
@@ -42,16 +42,16 @@ export const BusinessScopeSelect: React.FC<{ className?: string; selectClassName
 
 export const roleLabel = (user: { role: string; assignedBusiness?: string }) =>
   user.role === 'super_admin'
-    ? '⚡ Super Admin'
-    : `Staff (${
+    ? 'Super admin'
+    : `Staff, ${
         user.assignedBusiness === 'amanot_electronics'
           ? 'Electronics'
           : user.assignedBusiness === 'amanot_enterprise'
           ? 'Enterprise'
-          : 'All'
-      })`;
+          : 'both businesses'
+      }`;
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ onToggleSidebar?: () => void }> = ({ onToggleSidebar }) => {
   const { currentUser, activeTab, logout } = useApp();
   const { navigate } = useRouter();
 
@@ -65,82 +65,65 @@ export const Header: React.FC = () => {
       .flatMap((s) => s.items)
       .find((i) => i.tab === activeTab)?.label ?? '';
 
-  return (
-    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-lg pt-[env(safe-area-inset-top)]">
-      <div className="w-full px-3 sm:px-6 lg:px-8 h-14 lg:h-16 flex items-center justify-between gap-3">
-        {/* Left: Brand */}
-        <div className="flex items-center gap-2.5 lg:gap-3 min-w-0">
-          <div className="flex items-center -space-x-2 shrink-0">
-            <div
-              className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-cyan-500 flex items-center justify-center font-black text-xs text-white shadow-md border-2 border-slate-900"
-              title="Amanot Electronics (Konka, Gree, Haiko)"
-            >
-              <div className="flex flex-col items-center leading-none">
-                <span className="text-[10px] font-black tracking-tighter">AE</span>
-                <span className="text-[7px] text-cyan-200 font-bold">ELECT</span>
-              </div>
-            </div>
-            <div
-              className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-tr from-emerald-700 via-emerald-600 to-teal-400 flex items-center justify-center font-black text-xs text-white shadow-md border-2 border-slate-900"
-              title="Amanot Enterprise (Haier Authorized)"
-            >
-              <div className="flex flex-col items-center leading-none">
-                <span className="text-[10px] font-black tracking-tighter">AE</span>
-                <span className="text-[7px] text-emerald-100 font-bold">ENTER</span>
-              </div>
-            </div>
-          </div>
+  const initials = currentUser.name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-sm lg:text-base tracking-tight text-white flex items-center gap-1.5">
-                <span>AMANOT</span>
-                <span className="text-[11px] font-extrabold text-cyan-400">GROUP</span>
-              </h1>
-              <div className="hidden xl:flex items-center gap-1">
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">
-                  Electronics
-                </span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                  Enterprise
-                </span>
-              </div>
-            </div>
-            {/* Phones show the current screen; desktop shows the tagline. */}
-            <p className="text-[11px] text-slate-300 font-semibold truncate lg:hidden">{pageTitle}</p>
-            <p className="text-[10px] text-slate-400 font-medium hidden lg:block">Business ERP — Back Office</p>
-          </div>
+  return (
+    <header className="bg-white border-b border-[#E6E7EA] sticky top-0 z-40 pt-[env(safe-area-inset-top)] print:hidden">
+      <div className="w-full px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="hidden lg:flex w-9 h-9 items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#16181D]"
+              aria-label="Toggle sidebar"
+              title="Toggle sidebar"
+            >
+              <PanelLeft className="w-[18px] h-[18px]" />
+            </button>
+          )}
+          <span className="text-[17px] font-bold tracking-tight text-[#16181D] lg:pl-1">Amanat</span>
+          {pageTitle && (
+            <>
+              <span className="text-[#D1D5DB]" aria-hidden>/</span>
+              <span className="text-sm font-medium text-[#3B4049] truncate">{pageTitle}</span>
+            </>
+          )}
         </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <BusinessScopeSelect className="hidden lg:flex" />
           <a
             href="/"
             onClick={(e) => {
               e.preventDefault();
               navigate('/');
             }}
-            className="hidden lg:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-200 transition"
+            className="hidden lg:flex w-9 h-9 items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#16181D]"
+            title="Open website"
+            aria-label="Open website"
           >
-            <Store className="w-3.5 h-3.5 text-blue-400" />
-            <span>View Storefront</span>
+            <Store className="w-[18px] h-[18px]" />
           </a>
-
-          <BusinessScopeSelect className="hidden lg:flex" />
-
-          <div className="flex items-center gap-2 bg-slate-800/80 px-1.5 lg:px-2.5 py-1 rounded-xl border border-slate-700">
-            <div className="text-right hidden lg:block">
-              <p className="text-xs font-bold text-white leading-none">{currentUser.name}</p>
-              <p className="text-[10px] text-slate-400 font-mono mt-0.5">{roleLabel(currentUser)}</p>
+          <div className="flex items-center gap-2 pl-2 lg:ml-1 lg:border-l border-[#E6E7EA]">
+            <span className="w-8 h-8 rounded-full bg-[#EEF0FB] text-[#2E3192] text-xs font-semibold flex items-center justify-center" aria-hidden>
+              {initials}
+            </span>
+            <div className="hidden xl:block leading-tight">
+              <p className="text-sm font-medium text-[#16181D]">{currentUser.name}</p>
+              <p className="text-xs text-[#6B7280]">{roleLabel(currentUser)}</p>
             </div>
             <button
               onClick={handleLogout}
               title="Sign out"
               aria-label="Sign out"
-              className="flex items-center gap-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#FEF2F2] hover:text-[#B91C1C]"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Logout</span>
+              <LogOut className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>

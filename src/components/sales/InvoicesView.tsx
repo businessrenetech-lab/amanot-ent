@@ -140,13 +140,13 @@ export const InvoicesView: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header + Retail / Wholesale module switch */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <FileText className="w-6 h-6 text-blue-600" />
-            Invoices & Sales Records
+            Sales & invoices
           </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
+          <p className="text-sm text-[#6B7280] mt-1 max-w-2xl">
             {salesModule === 'wholesale'
               ? 'Wholesale customer ledger — outstanding balances, brought-forward dues, payments & printable statements.'
               : 'Retail customer invoices, due balances, sales returns, SMS reminders, and branded receipts.'}
@@ -736,7 +736,7 @@ export const InvoicesView: React.FC = () => {
       {/* Customer Returns Log Tab */}
       {activeTab === 'customer_returns' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="px-5 py-4 bg-white text-[#16181D] flex items-center justify-between border-b border-[#E6E7EA]">
             <div>
               <h2 className="text-sm font-extrabold flex items-center gap-2">
                 <RotateCcw className="w-4 h-4 text-blue-400" />

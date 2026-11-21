@@ -1135,16 +1135,11 @@ export const GlobalReportsView: React.FC = () => {
     <div className="space-y-6 pb-12">
       
       {/* Top Banner — title + business scope selector (top right) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-purple-100 text-purple-900 border border-purple-300 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-              Management & Audit Suite
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+          <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-purple-600" />
-            Accounting & Audit Reports Engine
+            Reports
           </h1>
         </div>
 

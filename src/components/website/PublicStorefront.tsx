@@ -20,7 +20,8 @@ import {
   WashingMachine,
   Microwave,
   Fan,
-  ArrowRight
+  ArrowRight,
+  Menu
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -89,6 +90,21 @@ export const PublicStorefront: React.FC = () => {
 
   const [query, setQuery] = useState('');
   const [dept, setDept] = useState<string>('all');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const scrollToId = (id: string) => {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+  const goToDept = (id: string) => {
+    setDept(id);
+    scrollToId('products');
+  };
   const [brand, setBrand] = useState<string>('all');
   const [limit, setLimit] = useState(PAGE);
   const [detail, setDetail] = useState<Product | null>(null);
@@ -176,6 +192,9 @@ export const PublicStorefront: React.FC = () => {
         .sf-num { font-variant-numeric: tabular-nums; }
         .sf-focus:focus-visible { outline: 2px solid ${T.enterprise}; outline-offset: 2px; }
         .sf-scroll { scrollbar-width: none; }
+        .sf-sheet { animation: sf-sheet-in .22s ease-out; }
+        @keyframes sf-sheet-in { from { transform: translateX(24px); opacity: .6; } }
+        @media (prefers-reduced-motion: reduce) { .sf-sheet { animation: none; } }
         .sf-scroll::-webkit-scrollbar { display: none; }
         .sf-cat { transition: border-color .2s, box-shadow .2s; }
         .sf-cat:hover { border-color: #CFd2D6; box-shadow: 0 10px 30px -12px rgba(22,24,29,.18); }
@@ -189,20 +208,120 @@ export const PublicStorefront: React.FC = () => {
       `}</style>
 
       {/* Header */}
-      <header className="border-b" style={{ borderColor: T.line }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <a href="/" className="sf-focus rounded text-xl font-bold tracking-tight">
+      <header
+        className="sticky top-0 z-30 border-b backdrop-blur supports-[backdrop-filter]:bg-white/85 bg-white"
+        style={{ borderColor: T.line }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-6">
+          <a href="/" className="sf-focus rounded text-xl font-bold tracking-tight shrink-0">
             Amanat
           </a>
-          <button
-            onClick={() => navigate('/admin')}
-            className="sf-focus rounded text-sm hover:underline underline-offset-4"
-            style={{ color: T.muted }}
-          >
-            Staff login
-          </button>
+          <nav aria-label="Departments" className="hidden lg:flex items-center gap-1 text-[15px]">
+            {DEPARTMENTS.filter((d) => (allDeptCounts[d.id] || 0) > 0).map((d) => (
+              <button
+                key={d.id}
+                onClick={() => goToDept(d.id)}
+                aria-current={dept === d.id ? 'true' : undefined}
+                className="sf-focus px-3 h-9 rounded-full transition-colors hover:bg-[#F3F3F1]"
+                style={{ color: dept === d.id ? T.ink : T.muted, fontWeight: dept === d.id ? 600 : 400 }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => scrollToId('showrooms')}
+              className="sf-focus hidden md:inline-flex px-3 h-9 items-center rounded-full text-[15px] hover:bg-[#F3F3F1]"
+              style={{ color: T.muted }}
+            >
+              Showrooms
+            </button>
+            <a
+              href={`tel:${firstNumber(showrooms.amanot_electronics.phone)}`}
+              className="sf-focus hidden sm:inline-flex items-center gap-2 h-10 px-4 rounded-full text-sm font-semibold text-white"
+              style={{ background: T.ink }}
+            >
+              <Phone className="w-4 h-4" />
+              Call
+            </a>
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="sf-focus lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F3F3F1]"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+          <button className="absolute inset-0 bg-black/30" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
+          <div className="absolute top-0 right-0 h-full w-[min(20rem,86vw)] bg-white shadow-xl flex flex-col sf-sheet">
+            <div className="h-16 px-4 flex items-center justify-between border-b" style={{ borderColor: T.line }}>
+              <span className="text-lg font-bold">Amanat</span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="sf-focus w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F3F3F1]"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-2" aria-label="Menu">
+              {DEPARTMENTS.filter((d) => (allDeptCounts[d.id] || 0) > 0).map((d) => {
+                const Icon = d.icon;
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => goToDept(d.id)}
+                    className="sf-focus w-full flex items-center gap-3 px-3 h-12 rounded-lg text-left text-[16px] hover:bg-[#F3F3F1]"
+                  >
+                    <Icon className="w-5 h-5" style={{ color: T.muted }} />
+                    <span className="flex-1">{d.label}</span>
+                    <span className="text-sm" style={{ color: T.muted }}>
+                      {allDeptCounts[d.id]}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="my-2 border-t" style={{ borderColor: T.line }} />
+              <button
+                onClick={() => scrollToId('showrooms')}
+                className="sf-focus w-full flex items-center px-3 h-12 rounded-lg text-left text-[16px] hover:bg-[#F3F3F1]"
+              >
+                Showrooms
+              </button>
+              <button
+                onClick={() => navigate('/admin')}
+                className="sf-focus w-full flex items-center px-3 h-12 rounded-lg text-left text-[16px] hover:bg-[#F3F3F1]"
+                style={{ color: T.muted }}
+              >
+                Staff login
+              </button>
+            </nav>
+            <div className="p-4 grid gap-2 border-t" style={{ borderColor: T.line }}>
+              <a
+                href={`tel:${firstNumber(showrooms.amanot_electronics.phone)}`}
+                className="sf-focus h-11 rounded-full flex items-center justify-center gap-2 text-sm font-semibold text-white"
+                style={{ background: T.ink }}
+              >
+                <Phone className="w-4 h-4" /> Call Electronics
+              </a>
+              <a
+                href={`tel:${firstNumber(showrooms.amanot_enterprise.phone)}`}
+                className="sf-focus h-11 rounded-full flex items-center justify-center gap-2 text-sm font-semibold border"
+                style={{ borderColor: T.line }}
+              >
+                <Phone className="w-4 h-4" /> Call Enterprise
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ background: '#EFEFEC' }}>
@@ -281,14 +400,14 @@ export const PublicStorefront: React.FC = () => {
                     setBrand('all');
                     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="sf-focus sf-cat group w-full h-full text-left rounded-2xl border bg-white p-4 sm:p-5"
+                  className="sf-focus sf-cat group w-full h-full text-left rounded-2xl border bg-white p-4 sm:p-5 flex flex-col items-start justify-start"
                   style={{ borderColor: T.line }}
                 >
                   <span className="sf-cat-icon flex h-14 w-14 items-center justify-center rounded-2xl">
                     <Icon className="w-7 h-7" strokeWidth={1.5} />
                   </span>
                   <span className="mt-4 block font-semibold leading-snug">{d.label}</span>
-                  <span className="mt-0.5 flex items-center justify-between text-sm sf-num" style={{ color: T.muted }}>
+                  <span className="mt-0.5 w-full flex items-center justify-between text-sm sf-num" style={{ color: T.muted }}>
                     {count} products
                     <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 transition group-hover:opacity-100 group-hover:translate-x-0" />
                   </span>
@@ -300,9 +419,9 @@ export const PublicStorefront: React.FC = () => {
       </section>
 
       {/* Catalogue */}
-      <main id="products" className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 scroll-mt-2">
+      <main id="products" className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 scroll-mt-16">
         <h2 className="text-2xl font-bold tracking-tight mb-4">All products</h2>
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur pt-3 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 border-b" style={{ borderColor: T.line }}>
+        <div className="sticky top-16 z-20 bg-white/95 backdrop-blur pt-3 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 border-b" style={{ borderColor: T.line }}>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <label className="relative flex-1">
               <span className="sr-only">Search products</span>
@@ -421,7 +540,7 @@ export const PublicStorefront: React.FC = () => {
       </main>
 
       {/* Showrooms */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+      <section id="showrooms" className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 scroll-mt-20">
         <h2 className="text-2xl font-bold tracking-tight">Visit our showrooms</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {(['amanot_electronics', 'amanot_enterprise'] as const).map((key) => {

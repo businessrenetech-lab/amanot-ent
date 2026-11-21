@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { RouterProvider, useRouter } from './router';
 import { canAccessTab, firstAllowedTab } from './auth/permissions';
@@ -27,29 +27,27 @@ const ToastHost: React.FC = () => {
   const { toastMessage } = useApp();
   if (!toastMessage) return null;
   return (
-    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] inset-x-4 lg:inset-x-auto lg:bottom-6 lg:right-6 z-[100] bg-slate-900 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 animate-in fade-in slide-in-from-bottom-5 flex items-center gap-2">
-      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+    <div role="status" className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] inset-x-4 lg:inset-x-auto lg:bottom-6 lg:right-6 z-[100] bg-[#16181D] text-white font-medium text-sm px-4 py-3 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 flex items-center gap-2">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       {toastMessage}
     </div>
   );
 };
 
 const FullScreenLoader: React.FC = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300">
+  <div className="min-h-screen bg-[#F6F7F9] flex items-center justify-center text-[#6B7280]">
     <div className="flex items-center gap-3 text-sm font-semibold">
-      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+      <Loader2 className="w-5 h-5 animate-spin text-[#2E3192]" />
       Loading…
     </div>
   </div>
 );
 
 const NoAccess: React.FC = () => (
-  <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-    <Ban className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-    <h2 className="text-lg font-black text-slate-900">Access Restricted</h2>
-    <p className="text-sm text-slate-500 mt-1">
-      Your role does not have permission to view this module. Contact a Super Admin.
-    </p>
+  <div className="bg-white border border-[#E6E7EA] rounded-xl p-12 text-center">
+    <Ban className="w-8 h-8 text-[#9CA3AF] mx-auto mb-3" />
+    <h2 className="text-base font-semibold">You don't have access to this page</h2>
+    <p className="text-sm text-[#6B7280] mt-1">Ask a super admin to turn it on for your login.</p>
   </div>
 );
 
@@ -110,12 +108,46 @@ const AdminApp: React.FC = () => {
     }
   };
 
+  // Sidebar: remembered per browser; the POS terminal always opens with it collapsed for room.
+  const [sidebarPref, setSidebarPref] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('amanat_sidebar_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [posExpanded, setPosExpanded] = useState(false);
+  useEffect(() => {
+    if (activeTab !== 'pos') setPosExpanded(false);
+  }, [activeTab]);
+  const collapsed = activeTab === 'pos' ? !posExpanded : sidebarPref;
+  const toggleSidebar = () => {
+    if (activeTab === 'pos') {
+      setPosExpanded((v) => !v);
+      return;
+    }
+    setSidebarPref((v) => {
+      try {
+        localStorage.setItem('amanat_sidebar_collapsed', v ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 flex flex-col antialiased">
-      <Header />
-      <div className="flex-1 flex w-full p-3 sm:p-4 lg:p-6 gap-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 min-w-0">{renderERPView()}</main>
+    <div className="admin-shell min-h-screen bg-[#F6F7F9] text-[#16181D] flex flex-col antialiased">
+      <Header onToggleSidebar={toggleSidebar} />
+      <div className="flex-1 flex w-full">
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} collapsed={collapsed} onToggle={toggleSidebar} />
+        <main
+          className={`flex-1 min-w-0 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6 ${
+            activeTab === 'pos' ? 'p-3 lg:p-4' : 'p-3 sm:p-5 lg:p-8'
+          }`}
+        >
+          <div className={activeTab === 'pos' ? '' : 'mx-auto max-w-[1440px]'}>{renderERPView()}</div>
+        </main>
       </div>
       <MobileNav />
 

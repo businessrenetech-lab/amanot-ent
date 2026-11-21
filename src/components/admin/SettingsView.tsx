@@ -65,11 +65,11 @@ export const SettingsView: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       
       <div>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <h1 className="text-[22px] font-semibold text-[#16181D] tracking-tight flex items-center gap-2">
           <Settings className="w-6 h-6 text-slate-700" />
-          System & Storefront Settings
+          Settings
         </h1>
-        <p className="text-xs text-slate-500 mt-1 font-medium">
+        <p className="text-sm text-[#6B7280] mt-1 max-w-2xl">
           Configure public website display options, Alpha SMS API credentials, and store outlet details for receipt headers.
         </p>
       </div>

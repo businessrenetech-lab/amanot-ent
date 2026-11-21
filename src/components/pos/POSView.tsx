@@ -827,8 +827,8 @@ export const POSView: React.FC = () => {
     }
   };
 
-  const panelBg = 'bg-white border-slate-200';
-  const fieldCls = 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400';
+  const panelBg = 'bg-white border-[#E6E7EA]';
+  const fieldCls = 'bg-white border-[#E6E7EA] text-[#16181D] placeholder-[#9CA3AF]';
   const chipCls = 'bg-slate-100 text-slate-700 hover:bg-slate-200';
   // Checkout terminal is always dark for a premium, consistent POS look.
   const termField = 'bg-slate-800/70 border-slate-700 text-white placeholder-slate-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500';
@@ -837,45 +837,25 @@ export const POSView: React.FC = () => {
     <div
       className={
         isMaximized
-          ? 'fixed inset-0 z-50 bg-slate-950 text-slate-100 p-3 sm:p-4 overflow-hidden flex flex-col gap-3 font-sans animate-in fade-in duration-200'
-          : 'flex flex-col gap-3 font-sans h-[calc(100dvh-9.75rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[440px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[600px] overflow-hidden'
+          ? 'fixed inset-0 z-50 bg-[#F6F7F9] text-[#16181D] p-3 sm:p-4 overflow-hidden flex flex-col gap-3 font-sans'
+          : 'flex flex-col gap-3 font-sans h-[calc(100dvh-9.75rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[440px] lg:h-[calc(100vh-5.5rem)] lg:min-h-[600px] overflow-hidden'
       }
     >
       {/* Maximized Fullscreen Top Bar Header */}
       {isMaximized && (
-        <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-3 px-4 rounded-2xl shrink-0 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-base shadow-md">
-              ⚡
-            </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                Amanot Fullscreen Cashier Terminal
-                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                  LIVE POS
-                </span>
-              </h1>
-              <p className="text-[11px] text-slate-400">
-                Staff: <strong className="text-slate-200">{currentUser.name}</strong> • Business:{' '}
-                <strong className="text-blue-400 uppercase">
-                  {activeBusiness === 'all' ? 'All Businesses (Electronics & Enterprise)' : activeBusiness}
-                </strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 font-mono hidden md:inline-block">
-              Press <kbd className="bg-slate-800 text-slate-200 border border-slate-700 px-1.5 py-0.5 rounded text-[10px]">ESC</kbd> to exit
-            </span>
-            <button
-              onClick={() => setIsMaximized(false)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition shadow-md active:scale-95"
-            >
-              <Minimize2 className="w-4 h-4" />
-              Exit Fullscreen
-            </button>
-          </div>
+        <div className="flex items-center justify-between h-12 px-1 shrink-0">
+          <p className="text-[15px] font-semibold text-[#16181D]">
+            Amanat POS
+            <span className="ml-2 font-normal text-[#6B7280]">{currentUser.name}</span>
+          </p>
+          <button
+            onClick={() => setIsMaximized(false)}
+            className="flex items-center gap-2 px-3 h-9 bg-white hover:bg-[#F3F4F6] text-[#3B4049] text-sm rounded-lg border border-[#E6E7EA] transition-colors"
+          >
+            <Minimize2 className="w-4 h-4" />
+            Exit full screen
+            <kbd className="hidden md:inline text-xs text-[#9CA3AF]">Esc</kbd>
+          </button>
         </div>
       )}
 
@@ -909,13 +889,13 @@ export const POSView: React.FC = () => {
       )}
 
       {/* Phone panel switcher */}
-      <div className="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-900 shrink-0 shadow-md" role="tablist">
+      <div className="lg:hidden grid grid-cols-2 gap-1 p-1 rounded-xl bg-[#ECEDF0] shrink-0" role="tablist">
         <button
           role="tab"
           aria-selected={mobilePane === 'products'}
           onClick={() => setMobilePane('products')}
           className={`py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
-            mobilePane === 'products' ? 'bg-white text-slate-900 shadow' : 'text-slate-300'
+            mobilePane === 'products' ? 'bg-white text-[#16181D] shadow-sm' : 'text-[#6B7280]'
           }`}
         >
           <Search className="w-3.5 h-3.5" /> Products
@@ -925,7 +905,7 @@ export const POSView: React.FC = () => {
           aria-selected={mobilePane === 'checkout'}
           onClick={() => setMobilePane('checkout')}
           className={`py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition ${
-            mobilePane === 'checkout' ? 'bg-white text-slate-900 shadow' : 'text-slate-300'
+            mobilePane === 'checkout' ? 'bg-white text-[#16181D] shadow-sm' : 'text-[#6B7280]'
           }`}
         >
           <ShoppingCart className="w-3.5 h-3.5" /> Checkout
@@ -944,22 +924,22 @@ export const POSView: React.FC = () => {
         <div className={`flex-1 flex-col gap-3 min-h-0 overflow-hidden ${
           mobilePane === 'checkout' ? 'hidden lg:flex' : 'flex'
         } ${
-          isMaximized ? 'bg-slate-100 border border-slate-200 rounded-2xl p-3' : ''
+          ''
         }`}>
 
           {/* Top Search & Filter Bar */}
-          <div className={`${panelBg} p-3 rounded-2xl shadow-sm border space-y-2.5 shrink-0`}>
+          <div className={`${panelBg} p-3 rounded-xl border space-y-2.5 shrink-0`}>
             <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-2 sm:gap-2.5">
               {/* Search Input */}
               <div className="relative w-full sm:w-auto sm:flex-1">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder='Search "gree 2 ton ac", SKU, model, series or capacity…  (Enter to add exact match)'
+                  placeholder="Search by name, model or capacity"
                   value={searchQuery}
                   onKeyDown={handleSearchKeyDown}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-10 pr-8 py-2.5 border rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium ${fieldCls}`}
+                  className={`w-full pl-10 pr-8 h-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2E3192]/30 focus:border-[#2E3192] ${fieldCls}`}
                 />
                 {searchQuery && (
                   <button
@@ -972,19 +952,19 @@ export const POSView: React.FC = () => {
               </div>
 
               {/* Price Type Selector Toggle */}
-              <div className="flex items-center p-1 rounded-xl text-xs font-semibold shrink-0 border bg-slate-100 border-slate-200">
+              <div className="flex items-center p-0.5 h-10 rounded-lg text-sm shrink-0 bg-[#F0F1F3]">
                 <button
                   onClick={() => toggleGlobalPriceType('retail')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    globalPriceType === 'retail' ? 'bg-blue-600 text-white shadow-sm font-bold' : 'text-slate-400 hover:text-slate-500'
+                  className={`px-3 h-full rounded-md transition-colors ${
+                    globalPriceType === 'retail' ? 'bg-white text-[#16181D] font-medium shadow-sm' : 'text-[#6B7280] hover:text-[#16181D]'
                   }`}
                 >
                   Retail
                 </button>
                 <button
                   onClick={() => toggleGlobalPriceType('wholesale')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    globalPriceType === 'wholesale' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-400 hover:text-slate-500'
+                  className={`px-3 h-full rounded-md transition-colors ${
+                    globalPriceType === 'wholesale' ? 'bg-white text-[#16181D] font-medium shadow-sm' : 'text-[#6B7280] hover:text-[#16181D]'
                   }`}
                 >
                   Wholesale
@@ -995,34 +975,33 @@ export const POSView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowDraftsModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 font-bold text-xs rounded-xl border border-amber-500/30 transition shrink-0"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 h-10 bg-white hover:bg-[#F3F4F6] text-[#3B4049] text-sm rounded-lg border border-[#E6E7EA] transition-colors shrink-0"
               >
-                <Clock className="w-4 h-4 text-amber-500" />
-                <span>Drafts ({draftInvoices.length})</span>
+                <Clock className="w-4 h-4 text-[#6B7280]" />
+                <span>Drafts{draftInvoices.length > 0 ? ` ${draftInvoices.length}` : ''}</span>
               </button>
 
               {/* Maximize / Minimize Controller Button */}
               <button
                 type="button"
                 onClick={() => setIsMaximized(!isMaximized)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-xs rounded-xl transition shrink-0 bg-slate-900 hover:bg-slate-800 text-amber-400"
-                title={isMaximized ? 'Exit fullscreen' : 'Maximize POS for full screen cashier layout'}
+                className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors shrink-0 bg-white hover:bg-[#F3F4F6] text-[#3B4049] border border-[#E6E7EA]"
+                title={isMaximized ? 'Exit full screen' : 'Full screen'}
+                aria-label={isMaximized ? 'Exit full screen' : 'Full screen'}
               >
                 {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                <span className="hidden sm:inline">{isMaximized ? 'Minimize' : 'Fullscreen'}</span>
               </button>
             </div>
 
             {/* Quick Filters: Brands & Categories */}
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 text-xs">
-              <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider shrink-0">Brands:</span>
               <div className="flex items-center gap-1.5 shrink-0">
                 {['all', ...brands].map((b) => (
                   <button
                     key={b}
                     onClick={() => setSelectedBrand(b)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap ${
-                      selectedBrand.toLowerCase() === b.toLowerCase() ? 'bg-blue-600 text-white shadow-sm' : chipCls
+                    className={`px-3 h-8 rounded-full text-[13px] transition-colors whitespace-nowrap ${
+                      selectedBrand.toLowerCase() === b.toLowerCase() ? 'bg-[#16181D] text-white' : 'text-[#3B4049] hover:bg-[#F0F1F3]'
                     }`}
                   >
                     {b === 'all' ? 'All Brands' : b}
@@ -1030,20 +1009,18 @@ export const POSView: React.FC = () => {
                 ))}
               </div>
 
-              <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider shrink-0 ml-2">Category:</span>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                aria-label="Category"
+                className="ml-auto shrink-0 h-8 pl-3 pr-8 rounded-full border border-[#E6E7EA] bg-white text-[13px] text-[#3B4049] focus:outline-none focus:border-[#2E3192]"
+              >
                 {['all', ...categories].map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setSelectedCategory(c)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
-                      selectedCategory.toLowerCase() === c.toLowerCase() ? 'bg-indigo-600 text-white shadow-sm' : chipCls
-                    }`}
-                  >
-                    {c === 'all' ? 'All Categories' : c}
-                  </button>
+                  <option key={c} value={c}>
+                    {c === 'all' ? 'All categories' : c}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
           </div>
 
@@ -1078,90 +1055,48 @@ export const POSView: React.FC = () => {
                 const salesQty = productSalesCountMap[product.id] || 0;
                 const lowStock = product.stockQty <= product.minStockAlert;
 
+                const thumb = product.image || product.images?.[0];
+                const meta = [product.model, product.capacity].filter(Boolean).join(', ');
+
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className={`rounded-2xl p-3 border transition-all duration-150 cursor-pointer flex flex-col group relative overflow-hidden ${
+                    disabled={product.stockQty <= 0}
+                    title={isElectronics ? 'Amanat Electronics' : 'Amanat Enterprise'}
+                    className={`text-left rounded-xl p-3 border transition-colors flex gap-3 relative ${
                       product.stockQty <= 0
-                        ? 'opacity-50 border-rose-200 bg-rose-50/10 pointer-events-none'
+                        ? 'opacity-50 bg-white border-[#E6E7EA] cursor-not-allowed'
                         : inCart
-                        ? 'bg-blue-50 border-blue-500 ring-2 ring-blue-500/20'
-                        : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-lg hover:-translate-y-0.5 text-slate-900'
+                        ? 'bg-[#EEF0FB] border-[#2E3192]'
+                        : 'bg-white border-[#E6E7EA] hover:border-[#B9BCE6]'
                     }`}
                   >
+                    <span className="w-14 h-14 shrink-0 rounded-lg bg-[#F3F3F1] flex items-center justify-center overflow-hidden">
+                      {thumb ? (
+                        <img src={thumb} alt="" loading="lazy" className="w-full h-full object-contain p-1 mix-blend-multiply" />
+                      ) : (
+                        <BrandLogo brand={product.brand} heightClass="h-4" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 flex flex-col">
+                      <span className="text-[13px] font-medium leading-snug line-clamp-2 text-[#16181D]">{product.name}</span>
+                      {meta && <span className="text-xs text-[#6B7280] truncate mt-0.5">{meta}</span>}
+                      <span className="mt-auto pt-1.5 flex items-baseline justify-between gap-2">
+                        <span className="text-[15px] font-semibold text-[#16181D]">৳{price.toLocaleString()}</span>
+                        <span className={`text-xs ${product.stockQty <= 0 || lowStock ? 'text-[#B42318]' : 'text-[#6B7280]'}`}>
+                          {product.stockQty > 0 ? `${product.stockQty} left` : 'Out of stock'}
+                          {salesQty > 0 && <span className="sr-only">, sold {salesQty}</span>}
+                        </span>
+                      </span>
+                    </span>
                     {inCart && (
-                      <span className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-bl-lg z-10">
-                        {inCart.quantity} in cart
+                      <span className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full bg-[#2E3192] text-white text-xs font-semibold flex items-center justify-center">
+                        {inCart.quantity}
                       </span>
                     )}
-
-                    {/* Top Row: Business dot + brand + sold */}
-                    <div className="flex justify-between items-center gap-1.5 mb-1.5">
-                      <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">
-                        <span className={`w-2 h-2 rounded-full ${isElectronics ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                        {isElectronics ? 'Electronics' : 'Enterprise'}
-                      </span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {salesQty > 0 && (
-                          <span className="text-[9px] font-extrabold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" /> {salesQty}
-                          </span>
-                        )}
-                        <BrandLogo brand={product.brand} heightClass="h-5" />
-                      </div>
-                    </div>
-
-                    {/* Name */}
-                    <h3 className="font-bold text-[13px] leading-snug line-clamp-2 transition-colors text-slate-900 group-hover:text-blue-700">
-                      {product.name}
-                    </h3>
-
-                    {/* Specs pills */}
-                    {(product.model || product.typeSeries || product.capacity) && (
-                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                        {product.model && (
-                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200">
-                            {product.model}
-                          </span>
-                        )}
-                        {product.typeSeries && (
-                          <span className="bg-blue-500/10 text-blue-500 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-500/20">
-                            {product.typeSeries}
-                          </span>
-                        )}
-                        {product.capacity && (
-                          <span className="bg-amber-500/10 text-amber-600 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/20">
-                            {product.capacity}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Footer: price + stock + add */}
-                    <div className="mt-auto pt-2.5 border-t border-slate-100 flex items-end justify-between">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block font-semibold uppercase">
-                          {globalPriceType}
-                        </span>
-                        <span className="text-base font-black font-mono text-slate-900">
-                          ৳{price.toLocaleString()}
-                        </span>
-                        <span className={`text-[10px] font-bold block mt-0.5 ${lowStock ? 'text-rose-500' : 'text-emerald-500'}`}>
-                          {product.stockQty > 0 ? `${product.stockQty} ${product.unit} left` : 'Out of stock'}
-                        </span>
-                      </div>
-                      <button
-                        disabled={product.stockQty <= 0}
-                        className={`flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-xl transition shadow-sm active:scale-95 ${
-                          inCart ? 'bg-emerald-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        {inCart ? 'Added' : 'Add'}
-                      </button>
-                    </div>
-                  </div>
+                  </button>
                 );
               })
             )}
@@ -1169,17 +1104,12 @@ export const POSView: React.FC = () => {
         </div>
 
         {/* ============================= RIGHT: Checkout Terminal (Bright Light Theme) ============================= */}
-        <aside className={`w-full lg:w-[400px] xl:w-[440px] flex-1 lg:flex-none bg-white border border-slate-200 rounded-2xl shadow-xl flex-col overflow-hidden lg:shrink-0 min-h-0 text-slate-900 ${
+        <aside className={`w-full lg:w-[400px] xl:w-[440px] flex-1 lg:flex-none bg-white border border-[#E6E7EA] rounded-xl flex-col overflow-hidden lg:shrink-0 min-h-0 text-slate-900 ${
           mobilePane === 'products' ? 'hidden lg:flex' : 'flex'
         }`}>
           {/* Terminal Header */}
-          <div className="p-3 px-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-                <ShoppingCart className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-              <h2 className="font-extrabold text-xs tracking-wider uppercase">Checkout Terminal</h2>
-            </div>
+          <div className="h-12 px-4 bg-white flex items-center justify-between border-b border-[#E6E7EA] shrink-0">
+            <h2 className="text-[15px] font-semibold text-[#16181D]">Current sale</h2>
             <div className="flex items-center gap-2">
               {cart.length > 0 && (
                 <button
@@ -1187,7 +1117,7 @@ export const POSView: React.FC = () => {
                     setCart([]);
                     setIsCartExpanded(false);
                   }}
-                  className="text-[10px] text-rose-300 hover:text-rose-200 font-bold flex items-center gap-1 hover:underline"
+                  className="text-[13px] text-[#6B7280] hover:text-[#B42318] flex items-center gap-1"
                 >
                   <RotateCcw className="w-3 h-3" /> Clear
                 </button>
@@ -1198,13 +1128,13 @@ export const POSView: React.FC = () => {
                   onClick={() => setIsCartExpanded((expanded) => !expanded)}
                   aria-expanded={isCartExpanded}
                   title={isCartExpanded ? 'Return to checkout' : 'Show full cart list'}
-                  className="text-[10px] font-mono font-bold bg-blue-950 hover:bg-blue-900 text-blue-200 px-2 py-0.5 rounded border border-blue-700 flex items-center gap-1 transition"
+                  className="text-[13px] text-[#3B4049] bg-[#F0F1F3] hover:bg-[#E6E7EA] px-2 h-7 rounded-md flex items-center gap-1 transition-colors"
                 >
                   {cart.length} items
                   <ChevronDown className={`w-3 h-3 transition-transform ${isCartExpanded ? 'rotate-180' : ''}`} />
                 </button>
               ) : (
-                <span className="text-[10px] font-mono font-bold bg-blue-950 text-blue-200 px-2 py-0.5 rounded border border-blue-800">
+                <span className="text-[13px] text-[#6B7280]">
                   {cart.length} item{cart.length === 1 ? '' : 's'}
                 </span>
               )}
@@ -1212,7 +1142,7 @@ export const POSView: React.FC = () => {
           </div>
 
           {/* Scrollable Cart Items (Bright, Crisp Cards with Full Product Names) */}
-          <div className={`p-2.5 overflow-y-auto space-y-2 bg-slate-50/50 ${
+          <div className={`p-2.5 overflow-y-auto space-y-2 bg-[#F8F9FA] ${
             isCartExpanded ? 'flex-1 min-h-0' : 'shrink-0 h-[190px]'
           }`}>
             {cart.length === 0 ? (
@@ -1231,13 +1161,13 @@ export const POSView: React.FC = () => {
                 return (
                   <div
                     key={item.product.id}
-                    className="bg-white border border-slate-200 shadow-sm rounded-xl p-2 space-y-1.5 hover:border-blue-300 transition"
+                    className="bg-white border border-[#E6E7EA] rounded-lg p-2.5 space-y-2"
                   >
                     {/* Top Row: Brand + Product Name + Trash Icon */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <BrandLogo brand={item.product.brand} heightClass="h-4" className="shrink-0" />
-                        <span className="font-black text-slate-900 text-xs truncate" title={item.product.name}>
+                        <span className="font-medium text-[#16181D] text-[13px] truncate" title={item.product.name}>
                           {item.product.name}
                         </span>
                         {(item.product.model || item.product.capacity) && (
@@ -1263,7 +1193,7 @@ export const POSView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setItemPriceType(item.product.id, item.priceType === 'retail' ? 'wholesale' : 'retail')}
-                          className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 font-extrabold px-1.5 py-0.5 rounded hover:bg-blue-100 font-mono transition"
+                          className="text-xs text-[#3B4049] bg-[#F0F1F3] px-2 py-0.5 rounded hover:bg-[#E6E7EA] transition-colors"
                           title="Click to toggle Retail / Wholesale price"
                         >
                           ৳{item.unitPrice.toLocaleString()} ({item.priceType === 'retail' ? 'R' : 'W'})
@@ -1291,7 +1221,7 @@ export const POSView: React.FC = () => {
                         </div>
 
                         {/* Line Total */}
-                        <span className="text-xs font-black font-mono text-emerald-600 shrink-0 w-16 text-right">
+                        <span className="text-[13px] font-semibold text-[#16181D] shrink-0 w-20 text-right">
                           ৳{lineTotal.toLocaleString()}
                         </span>
                       </div>
@@ -1306,10 +1236,10 @@ export const POSView: React.FC = () => {
           {!isCartExpanded && (
           <div className="flex-1 min-h-0 overflow-y-auto border-t border-slate-200 bg-white">
             {/* Customer Info (Bright Compact Inputs) */}
-            <div className="p-2 px-3 border-b border-slate-200 bg-slate-50/60 space-y-1.5">
+            <div className="p-3 border-b border-[#E6E7EA] bg-white space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                  <User className="w-3 h-3 text-blue-600" /> Customer Details
+                  Customer
                 </p>
                 {linkedCustomer && (
                   <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-1">
@@ -1755,8 +1685,8 @@ export const POSView: React.FC = () => {
                 )}
 
                 <div className="flex justify-between items-center border-t border-slate-200 pt-1 mt-1">
-                  <span className="text-slate-900 font-black text-xs">Grand Total</span>
-                  <span className="font-mono text-amber-600 text-base font-black">৳{grandTotal.toLocaleString()}</span>
+                  <span className="text-[#16181D] font-semibold text-sm">Total</span>
+                  <span className="text-[#16181D] text-lg font-semibold">৳{grandTotal.toLocaleString()}</span>
                 </div>
                 {specialDiscountAmount > 0 && (
                   <div className="flex justify-between items-center text-[10px] font-bold text-violet-700">
@@ -1851,30 +1781,30 @@ export const POSView: React.FC = () => {
 
           {/* Fixed checkout footer: always visible without scrolling the payment panel. */}
           {!isCartExpanded && (
-            <div className="shrink-0 p-2 bg-white border-t border-slate-200 shadow-[0_-6px_16px_rgba(15,23,42,0.08)]">
+            <div className="shrink-0 p-3 bg-white border-t border-[#E6E7EA]">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={cart.length === 0}
                   onClick={() => handleCheckout(true)}
-                  className="px-3 py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 flex items-center justify-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  className="px-3 h-11 rounded-lg text-sm bg-white hover:bg-[#F3F4F6] text-[#3B4049] border border-[#E6E7EA] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   title="Save as Draft and clear the terminal"
                 >
                   <FileText className="w-4 h-4 text-slate-500" />
-                  <span className="hidden xl:inline">Draft</span>
+                  <span>Save draft</span>
                 </button>
                 <button
                   disabled={cart.length === 0 || Boolean(isEditingRestricted)}
                   onClick={() => handleCheckout(false)}
                   title="Complete the sale and open the vector PDF invoice"
-                  className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
+                  className={`flex-1 h-11 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
                     cart.length === 0 || isEditingRestricted
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95'
+                      ? 'bg-[#E6E7EA] text-[#9CA3AF] cursor-not-allowed'
+                      : 'bg-[#2E3192] hover:bg-[#25277A] text-white active:scale-[0.99]'
                   }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  {editingSaleInvoice ? 'Update & Export Vector PDF' : 'Complete & Export Vector PDF'}
+                  {editingSaleInvoice ? 'Update sale' : grandTotal > 0 ? `Complete sale, ৳${grandTotal.toLocaleString()}` : 'Complete sale'}
                 </button>
               </div>
             </div>
@@ -1887,7 +1817,7 @@ export const POSView: React.FC = () => {
       {showDraftsModal && (
         <div className="modal-overlay fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+            <div className="px-5 py-4 bg-white text-[#16181D] flex items-center justify-between border-b border-[#E6E7EA]">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-amber-400" />
                 <h3 className="font-extrabold text-sm uppercase tracking-wider">Saved POS Draft Sales ({draftInvoices.length})</h3>
